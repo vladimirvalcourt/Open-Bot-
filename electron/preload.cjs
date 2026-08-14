@@ -26,6 +26,25 @@ contextBridge.exposeInMainWorld("ogb", {
   /** Opens System Settings on the given privacy pane: mic|screen|speech. */
   permOpenSettings: (pane) => ipcRenderer.invoke("perm:open-settings", pane),
 
+  /** Local computer-use permissions and daemon lifecycle. */
+  cua: {
+    status: () => ipcRenderer.invoke("cua:permissions"),
+    requestPermissions: () => ipcRenderer.invoke("cua:request-permissions"),
+    openSettings: (pane) => ipcRenderer.invoke("cua:open-settings", pane),
+    restart: () => ipcRenderer.invoke("cua:restart"),
+  },
+  browser: {
+    show: (botId, url, bounds) => ipcRenderer.invoke("browser:show", { botId, url, bounds }),
+    navigate: (botId, url) => ipcRenderer.invoke("browser:navigate", { botId, url }),
+    action: (botId, action) => ipcRenderer.invoke("browser:action", { botId, action }),
+    hide: (botId) => ipcRenderer.invoke("browser:hide", botId),
+    teachStart: (botId) => ipcRenderer.invoke("browser:teach-start", botId),
+    teachStop: (botId) => ipcRenderer.invoke("browser:teach-stop", botId),
+  },
+  notifications: {
+    show: (title, body) => ipcRenderer.invoke("notification:show", { title, body }),
+  },
+
   /** In-app auto-update. State object:
    *  { status: "idle"|"checking"|"available"|"downloading"|"downloaded"|"error",
    *    version?, percent?, message? }. onState fires immediately with the

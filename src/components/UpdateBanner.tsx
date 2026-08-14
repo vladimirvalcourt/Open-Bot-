@@ -3,7 +3,7 @@
 // and while idle/checking; appears only when actionable: an update to
 // download, a download in progress, a restart to apply, or an error.
 import { useState } from "react";
-import { ArrowDownToLine, RefreshCw, Sparkles, X } from "lucide-react";
+import { ArrowDownToLine, RefreshCw, Sparkles, X } from "./icons";
 import { useUpdaterState } from "@/lib/updater";
 
 export function UpdateBanner() {
@@ -11,7 +11,7 @@ export function UpdateBanner() {
   // dismissal is per status+version, so the popup returns for the next
   // update (and when an available one finishes downloading)
   const [dismissed, setDismissed] = useState<string | null>(null);
-  if (!s || s.status === "idle" || s.status === "checking") return null;
+  if (!s || s.status === "idle" || s.status === "checking" || s.status === "disabled") return null;
   const key = `${s.status}:${s.version ?? ""}`;
   if (dismissed === key) return null;
   const updater = window.ogb!.updater!;
@@ -36,9 +36,7 @@ export function UpdateBanner() {
   return (
     <div className="animate-panel-in fixed bottom-4 left-4 z-50 w-[300px] rounded-xl border border-hairline/40 bg-panel p-3.5 shadow-2xl shadow-black/50">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
-          <Sparkles size={14} />
-        </span>
+        <Sparkles size={18} weight="regular" className="mt-0.5 shrink-0 text-accent" />
         <div className="min-w-0 flex-1">
           <div className="text-[13.5px] font-semibold text-ink">{title}</div>
           <div className="mt-0.5 truncate text-[12.5px] text-ink-secondary" title={subtitle}>

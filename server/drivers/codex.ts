@@ -24,8 +24,22 @@ import type {
 import { newEventId, newId } from "../contracts.ts";
 import { augmentedPath } from "../env-path.ts";
 import { appendNative } from "./native.ts";
+import { sealIntegration } from "../secure-integration.ts";
 
 const DRIVER_KIND = "codex";
+
+// `codex -c` parses TOML, not JSON. JSON arrays happen to be valid TOML,
+// but JSON objects are not: TOML inline tables use `key = value`. Passing
+// JSON here makes the real CLI exit before app-server initialization.
+function tomlString(value: string) {
+  return JSON.stringify(value);
+}
+function tomlStringArray(values: string[]) {
+  return `[${values.map(tomlString).join(", ")}]`;
+}
+function tomlStringMap(values: Record<string, string>) {
+  return `{ ${Object.entries(values).map(([key, value]) => `${tomlString(key)} = ${tomlString(value)}`).join(", ")} }`;
+}
 
 // catalog ported from upstream packages/contracts/src/model.ts
 const MODELS = {
@@ -46,7 +60,9 @@ function decodeConfig(raw: unknown): CodexConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
     cli: typeof o.cli === "string" ? o.cli : "codex",
-    fullAuto: o.fullAuto === true,
+    // Provider-level full auto bypassed OpenMausBot's central Trust Center.
+    // Preserve the field for config compatibility but force it off.
+    fullAuto: false,
   };
 }
 
@@ -92,7 +108,41 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       // billing to pay-as-you-go (agentcal)
       delete env.OPENAI_API_KEY;
 
-      const child = spawn(config.cli, ["app-server"], {
+      const cliArgs = ["app-server"];
+      if (turn.integrations?.composio) {
+        const connected = sealIntegration(turn.integrations.composio);
+        cliArgs.push(
+          "-c", `mcp_servers.composio.command=${tomlString(connected.command)}`,
+          "-c", `mcp_servers.composio.args=${tomlStringArray(connected.args)}`,
+          "-c", `mcp_servers.composio.env=${tomlStringMap(connected.env)}`,
+        );
+      }
+      if (turn.integrations?.agents) {
+        const workspace = sealIntegration(turn.integrations.agents);
+        cliArgs.push(
+          "-c", `mcp_servers.agents.command=${tomlString(workspace.command)}`,
+          "-c", `mcp_servers.agents.args=${tomlStringArray(workspace.args)}`,
+          "-c", `mcp_servers.agents.env=${tomlStringMap(workspace.env)}`,
+        );
+      }
+      if (turn.integrations?.browser) {
+        const browser = sealIntegration(turn.integrations.browser);
+        cliArgs.push(
+          "-c", `mcp_servers.browser.command=${tomlString(browser.command)}`,
+          "-c", `mcp_servers.browser.args=${tomlStringArray(browser.args)}`,
+          "-c", `mcp_servers.browser.env=${tomlStringMap(browser.env)}`,
+        );
+      }
+      const rawComputer = turn.integrations?.remoteComputer ?? turn.integrations?.localComputer;
+      const computer = rawComputer ? sealIntegration(rawComputer) : undefined;
+      if (computer) {
+        cliArgs.push(
+          "-c", `mcp_servers.computer.command=${tomlString(computer.command)}`,
+          "-c", `mcp_servers.computer.args=${tomlStringArray(computer.args)}`,
+          "-c", `mcp_servers.computer.env=${tomlStringMap(computer.env)}`,
+        );
+      }
+      const child = spawn(config.cli, cliArgs, {
         cwd: turn.cwd ?? homedir(),
         env,
         stdio: ["pipe", "pipe", "pipe"],
@@ -150,9 +200,6 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
             : isQuestion
               ? "ask_user"
               : "shell";
-        if (config.fullAuto && !isQuestion) {
-          return send({ jsonrpc: "2.0", id: msg.id, result: { decision: legacy ? "approved" : "accept" } });
-        }
         const requestId = newId();
         const summary =
           typeof params.command === "string"
@@ -353,8 +400,8 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
             const started = await request("thread/start", {
               cwd: turn.cwd ?? homedir(),
               model: turn.model || null,
-              sandbox: config.fullAuto ? "danger-full-access" : "workspace-write",
-              approvalPolicy: config.fullAuto ? "never" : "on-request",
+              sandbox: "workspace-write",
+              approvalPolicy: "on-request",
               ephemeral: false,
             });
             codexThreadId = started?.thread?.id ?? null;
@@ -395,7 +442,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       snapshot,
       adapter: {
         provider: DRIVER_KIND,
-        capabilities: { sessionModelSwitch: "unsupported" },
+        capabilities: { sessionModelSwitch: "unsupported", composioMcp: true, agentsMcp: true },
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.stop(),
         respondToRequest: async (threadId, requestId, decision) => {

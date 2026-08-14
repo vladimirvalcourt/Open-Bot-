@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-/* Grok Bot dark palette (pixel-sampled from the real app) */
+/* Shared semantic palette. Theme overrides stay here so every surface changes
+   together instead of accumulating component-specific light-mode patches. */
 @theme {
   --animate-panel-in: panel-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-pop-in: pop-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
@@ -28,6 +29,24 @@
   --radius-xl: 10px;
 }
 
+html[data-theme="light"] {
+  --color-app: #f4f4f5;
+  --color-panel: #ffffff;
+  --color-raised: #e4e4e7;
+  --color-raised-hover: #d4d4d8;
+  --color-card: #f0f0f2;
+  --color-inset: #ffffff;
+  --color-hairline: #c9c9ce;
+  --color-ink: #18181b;
+  --color-ink-secondary: #5f5f66;
+  --color-accent: #0878e8;
+  --color-accent-border: #0878e8;
+  --color-bubble-user: #dfe3e8;
+  --color-success: #148653;
+  --color-danger: #d92d42;
+  --color-warning: #a85d00;
+}
+
 html,
 body,
 #root {
@@ -46,11 +65,21 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3d3d3d;
+  background: var(--color-raised-hover);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.theme-code .shiki,
+.theme-code .shiki span {
+  color: var(--shiki-light);
+}
+
+html[data-theme="dark"] .theme-code .shiki,
+html[data-theme="dark"] .theme-code .shiki span {
+  color: var(--shiki-dark);
 }
 
 @keyframes panel-in {
@@ -138,7 +167,7 @@ body {
 }
 
 .maus-speed-line--two {
-  stroke: #fcfcfc;
+  stroke: var(--color-ink);
   stroke-width: 2.5px;
 }
 

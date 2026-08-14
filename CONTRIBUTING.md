@@ -35,6 +35,28 @@ pnpm test          # vitest suite (server unit + driver contract + API smoke)
 pnpm test:watch    # same, in watch mode
 ```
 
+### Packaging the macOS app
+
+`pnpm package` downloads the pinned CUA driver release, verifies its SHA-256
+checksum and Mach-O architectures, then places it and the embedded-host SDK
+outside ASAR under `Contents/Resources`. Electron-builder re-signs the nested binary
+with the same identity as OpenMausBot before signing the enclosing app.
+
+Release packaging therefore requires a valid **Developer ID Application**
+certificate (`CSC_NAME` or electron-builder's normal keychain discovery). A
+development-only identity can build for local testing, but cannot produce a
+notarizable public release. After packaging, notarizing, and stapling, verify
+the app before publishing:
+
+```sh
+pnpm verify:mac -- release/mac-arm64/OpenMausBot.app
+```
+
+The verifier checks the driver location, executable bit, architectures,
+bundle signature, nested signature, shared Team ID, hardened runtime, and
+Gatekeeper assessment. It fails rather than claiming release readiness when
+the app is unsigned or signed by mismatched teams.
+
 ## Repo map
 
 | Path | What lives there |
@@ -101,8 +123,8 @@ The SPI in [`server/contracts.ts`](server/contracts.ts) is deliberately small. A
 
 ## Secrets
 
-API keys are write-only: they land in `~/.openmausbot/config.json` via `PUT /api/config` and the API
-only ever reports `configured` booleans. Keep it that way — no logging keys, no echoing them in
+API keys are write-only: the packaged macOS app stores them in Keychain via `PUT /api/config`, and the API
+only ever reports `configured` booleans. Non-macOS tests use an isolated throwaway JSON fallback. Keep it that way — no logging keys, no echoing them in
 responses or events, no baking them into argv where another local process could read them.
 
 ## Before you open the PR

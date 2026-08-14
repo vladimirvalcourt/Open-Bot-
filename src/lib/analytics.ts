@@ -9,8 +9,8 @@ const TOKEN = "phc_m2hP39w8y2gLPvHgDvSXAu6xcZ3agjf4ruL56rGcMZEe";
 
 let ready = false;
 
-export function initAnalytics() {
-  if (ready) return;
+export function initAnalytics(consent = false) {
+  if (!consent || ready) return;
   posthog.init(TOKEN, {
     api_host: "https://us.i.posthog.com",
     autocapture: true,
@@ -18,6 +18,7 @@ export function initAnalytics() {
     person_profiles: "identified_only",
     persistence: "localStorage",
   });
+  posthog.opt_in_capturing();
   ready = true;
   const platform = navigator.userAgent.includes("Electron") ? "desktop" : "browser";
   // one-time install marker — app_first_open counts installs (the closest
@@ -28,6 +29,15 @@ export function initAnalytics() {
     posthog.capture("app_first_open", { platform });
   }
   posthog.capture("app_opened", { platform });
+}
+
+export function setAnalyticsConsent(consent: boolean) {
+  if (consent) return initAnalytics(true);
+  if (ready) {
+    posthog.opt_out_capturing();
+    posthog.reset();
+    ready = false;
+  }
 }
 
 export function track(event: string, props?: Record<string, unknown>) {

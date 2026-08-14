@@ -30,12 +30,13 @@ import type {
 } from "../contracts.ts";
 import { newEventId, newId } from "../contracts.ts";
 import { appendNative } from "./native.ts";
+import { sealIntegration } from "../secure-integration.ts";
 
 const DRIVER_KIND = "claudeAgent";
 
 export interface ClaudeConfig {
   cli: string;
-  permissionMode: "acceptEdits" | "auto" | "bypassPermissions";
+  permissionMode: "acceptEdits";
 }
 
 // model catalog ported from upstream packages/contracts/src/model.ts
@@ -180,7 +181,9 @@ function decodeConfig(raw: unknown): ClaudeConfig {
   }
   return {
     cli: typeof o.cli === "string" ? o.cli : "claude",
-    permissionMode: (mode as ClaudeConfig["permissionMode"]) ?? "acceptEdits",
+    // Unsafe legacy modes are accepted for migration but normalized to the
+    // centrally governed mode instead of bypassing the Trust Center.
+    permissionMode: "acceptEdits",
   };
 }
 
@@ -234,7 +237,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         // token-level streaming: content_block_delta events between the
         // whole-message frames, so the bubble grows as the model writes
         "--include-partial-messages",
-        "--permission-mode", config.permissionMode === "auto" ? "acceptEdits" : config.permissionMode,
+        "--permission-mode", "acceptEdits",
       ];
       if (sessionId) args.push("--resume", sessionId);
       else args.push("--session-id", newSessionId!);
@@ -245,16 +248,11 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       // acceptEdits run silently denies anything unlisted)
       const mcpServers: Record<string, unknown> = {};
       const allowed: string[] = [];
-      if (turn.integrations?.composio?.key) {
-        mcpServers.composio = {
-          type: "http",
-          url: turn.integrations.composio.url || "https://connect.composio.dev/mcp",
-          headers: { "x-consumer-api-key": turn.integrations.composio.key },
-        };
-        allowed.push("mcp__composio");
+      if (turn.integrations?.composio) {
+        mcpServers.composio = sealIntegration(turn.integrations.composio);
       }
       if (turn.integrations?.computer) {
-        mcpServers.computer = {
+        mcpServers.computer = sealIntegration({
           command: process.execPath,
           args: [PROXY_PATH],
           env: {
@@ -262,28 +260,40 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
             OGB_BOX_ID: turn.integrations.computer.boxId,
             OGB_BOX_TOKEN: turn.integrations.computer.token,
           },
-        };
-        allowed.push("mcp__computer");
+        });
+        allowed.push("mcp__computer__screenshot");
+      } else if (turn.integrations?.remoteComputer) {
+        mcpServers.computer = sealIntegration(turn.integrations.remoteComputer);
+        allowed.push("mcp__computer__computer_state");
       } else if (turn.integrations?.localComputer) {
         // this Mac, via the Electron-owned cua-driver daemon (spawn config
         // read from cua-connection.json — same "computer" name either way,
         // the agent just sees a computer)
-        mcpServers.computer = { ...turn.integrations.localComputer };
-        allowed.push("mcp__computer");
+        mcpServers.computer = sealIntegration(turn.integrations.localComputer);
+        allowed.push("mcp__computer__screenshot", "mcp__computer__computer_state");
       }
       // peer-agent comms (list_bots/ask_bot) — the harness builds the whole
       // spawn contract (command/args/env incl. the boot token) in
       // agentsIntegration(); pre-allowing matters doubly here, or the CLI's
       // own ListAgents look-alike shadows it and "@Bot" asks go nowhere
       if (turn.integrations?.agents) {
-        mcpServers.agents = { ...turn.integrations.agents };
-        allowed.push("mcp__agents");
+        mcpServers.agents = sealIntegration(turn.integrations.agents);
+        allowed.push(
+          "mcp__agents__list_capabilities", "mcp__agents__list_bots",
+          "mcp__agents__search_memory", "mcp__agents__list_routines",
+        );
       }
-      // permission broker: anything acceptEdits would silently deny becomes
-      // an Allow/Deny card in chat, and the agent gets ask_user. Skipped in
-      // bypassPermissions (fullAuto) — nothing would ever ask.
+      if (turn.integrations?.browser) {
+        mcpServers.browser = sealIntegration(turn.integrations.browser);
+        allowed.push(
+          "mcp__browser__state", "mcp__browser__snapshot",
+          "mcp__browser__screenshot", "mcp__browser__wait",
+        );
+      }
+      // Permission broker: anything outside the exact read-only allowlist
+      // becomes an Allow/Deny card in chat, and the agent gets ask_user.
       let broker: ReturnType<typeof createPermissionBroker> | undefined;
-      if (config.permissionMode !== "bypassPermissions") {
+      {
         const socketPath = permissionSocketPath(threadId);
         broker = createPermissionBroker({
           socketPath,
@@ -308,7 +318,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         });
         args.push("--permission-prompt-tool", "mcp__ogb__approve");
         mcpServers.ogb = { command: process.execPath, args: [PERM_PROXY_PATH, socketPath], env: { ...NODE_ENV_FLAG } };
-        allowed.push("mcp__ogb");
+        allowed.push("mcp__ogb__approve", "mcp__ogb__ask_user");
       }
       if (Object.keys(mcpServers).length) {
         args.push("--mcp-config", JSON.stringify({ mcpServers }));
@@ -487,7 +497,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       snapshot,
       adapter: {
         provider: DRIVER_KIND,
-        capabilities: { sessionModelSwitch: "in-session", agentsMcp: true },
+        capabilities: { sessionModelSwitch: "in-session", composioMcp: true, agentsMcp: true },
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.stop(),
         respondToRequest: async (threadId, requestId, decision) => {

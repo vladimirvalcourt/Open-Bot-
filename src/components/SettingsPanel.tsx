@@ -1,5 +1,6 @@
-import { ChevronLeft, X } from "lucide-react";
-import { useStore, type Bot } from "@/state/store";
+import { ChevronLeft, X } from "./icons";
+import { api, useStore, type Bot } from "@/state/store";
+import { useEffect, useState } from "react";
 import { MausAvatar } from "./Avatar";
 import {
   PICKABLE_STATES,
@@ -30,9 +31,11 @@ const inputCls =
 
 export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => { api("/api/projects").then((value) => setProjects(value.projects ?? [])).catch(() => {}); }, []);
   const patch = (
     p: Partial<
-      Pick<Bot, "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression">
+      Pick<Bot, "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression" | "projectId">
     >,
   ) => dispatch({ type: "updateBot", botId: bot.id, patch: p });
   const activeState = stateForBot(bot);
@@ -124,9 +127,10 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
             </div>
           </div>
 
-          <Field label="Name">
+          <Field label="Bot name">
             <input
               className={inputCls}
+              placeholder="Vladbot"
               value={bot.name}
               onChange={(e) => patch({ name: e.target.value })}
             />
@@ -146,6 +150,15 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               value={bot.description}
               onChange={(e) => patch({ description: e.target.value })}
             />
+          </Field>
+          <Field label="Project">
+            <select
+              className={inputCls}
+              value={bot.projectId ?? "default"}
+              onChange={(event) => patch({ projectId: event.target.value })}
+            >
+              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
           </Field>
 
           <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">

@@ -1,51 +1,64 @@
 // Gemini CLI harness support — Google's `gemini` CLI over ACP stdio
-// (`gemini --experimental-acp`). Rides the generic runtime in acp/core.ts.
+// (`gemini --acp`). Rides the generic runtime in acp/core.ts.
 //
-// Auth is intentionally lenient (authFailure "continue"): the Gemini CLI
-// commonly runs off an ambient login — an OAuth session from a prior
-// `gemini` run (~/.gemini/oauth_creds.json) or GEMINI_API_KEY in the env —
-// so we attempt the advertised authenticate method but never hard-fail the
-// turn on it, unlike Grok's subscription-bound cached_token.
-//
-// NOTE: untested against a live `gemini` CLI on this machine (not installed);
-// the ACP flag + auth method ids follow the published Gemini CLI ACP contract
-// and should be re-verified end-to-end once the CLI is present.
-import { existsSync } from "node:fs";
+// The provider is deliberately subscription/account-first. ACP's
+// `oauth-personal` method opens Google's browser login and reuses the cached
+// Google account on later turns. We never silently choose `gemini-api-key`:
+// API billing is a separate product and is not what this driver promises.
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { createAcpDriver, type AcpSupport } from "./core.ts";
 
-// Prefer an explicit key method, then personal OAuth, then Vertex — but fall
-// back to whatever the CLI advertises so a new method id still works.
-const AUTH_PREFERENCE = ["gemini-api-key", "oauth-personal", "vertex-ai"];
+const GOOGLE_ACCOUNT_AUTH = "oauth-personal";
+
+function selectedGoogleAccountAuth(): boolean {
+  try {
+    const settings = JSON.parse(readFileSync(join(homedir(), ".gemini", "settings.json"), "utf8"));
+    return settings?.security?.auth?.selectedType === GOOGLE_ACCOUNT_AUTH;
+  } catch {
+    return false;
+  }
+}
 
 const support: AcpSupport = {
   driverKind: "geminiAgent",
   displayName: "Gemini",
   models: {
-    default: "gemini-2.5-pro",
+    // Official CLI aliases let Google's account-aware router choose models
+    // actually enabled for this subscription instead of hard-coding a stale
+    // preview/model id.
+    default: "auto",
     options: [
-      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+      { id: "auto", label: "Auto" },
+      { id: "pro", label: "Pro" },
+      { id: "flash", label: "Flash" },
     ],
   },
   defaultCli: "gemini",
   nativeSource: "gemini.acp",
-  loginNote: "Gemini CLI is not signed in — run `gemini` once to log in, or set GEMINI_API_KEY",
+  loginNote: "Gemini CLI could not sign in with Google — run `gemini` once and choose Sign in with Google",
 
-  spawnArgs: (_config, turn) => ["--experimental-acp", ...(turn.model ? ["-m", turn.model] : [])],
+  spawnArgs: (_config, turn) => ["--acp", ...(turn.model ? ["-m", turn.model] : [])],
 
-  pickAuthMethod: (methods) => {
-    const ids = methods.map((m) => m.id).filter((id): id is string => typeof id === "string");
-    for (const pref of AUTH_PREFERENCE) if (ids.includes(pref)) return pref;
-    return ids[0] ?? null;
+  // Keep this driver on the fixed-price Google-account path even when the
+  // parent shell happens to export pay-as-you-go credentials.
+  transformEnv: (env) => {
+    delete env.GEMINI_API_KEY;
+    delete env.GOOGLE_API_KEY;
+    delete env.GOOGLE_GENAI_USE_VERTEXAI;
   },
-  authFailure: "continue",
 
-  isAuthenticated: (env) =>
-    Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) ||
-    existsSync(join(homedir(), ".gemini", "oauth_creds.json")),
+  pickAuthMethod: (methods) =>
+    methods.some((method) => method.id === GOOGLE_ACCOUNT_AUTH) ? GOOGLE_ACCOUNT_AUTH : null,
+  authFailure: "fail",
+
+  // New Gemini CLI releases keep OAuth tokens in the OS credential store;
+  // settings records the chosen mechanism without exposing a token. Keep the
+  // legacy file check for users upgrading from older releases.
+  isAuthenticated: () =>
+    selectedGoogleAccountAuth() || existsSync(join(homedir(), ".gemini", "oauth_creds.json")),
 
   buildPromptText: (turn) => (turn.system ? `${turn.system}\n\n${turn.text}` : turn.text),
 };

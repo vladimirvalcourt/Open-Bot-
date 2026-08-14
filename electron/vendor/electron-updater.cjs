@@ -2481,9 +2481,9 @@ var require_lib = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/CancellationToken.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/CancellationToken.js
 var require_CancellationToken = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/CancellationToken.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/CancellationToken.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CancellationError = exports2.CancellationToken = void 0;
@@ -2587,9 +2587,9 @@ var require_CancellationToken = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/error.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/error.js
 var require_error = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/error.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/error.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.newError = newError;
@@ -2717,9 +2717,9 @@ var require_ms = __commonJS({
   }
 });
 
-// node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/common.js
+// node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/common.js
 var require_common = __commonJS({
-  "node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/common.js"(exports2, module2) {
+  "node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/common.js"(exports2, module2) {
     function setup(env) {
       createDebug.debug = createDebug;
       createDebug.default = createDebug;
@@ -2894,9 +2894,9 @@ var require_common = __commonJS({
   }
 });
 
-// node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/browser.js
+// node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/browser.js
 var require_browser = __commonJS({
-  "node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/browser.js"(exports2, module2) {
+  "node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/browser.js"(exports2, module2) {
     exports2.formatArgs = formatArgs;
     exports2.save = save;
     exports2.load = load;
@@ -3179,9 +3179,9 @@ var require_supports_color = __commonJS({
   }
 });
 
-// node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/node.js
+// node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/node.js
 var require_node = __commonJS({
-  "node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/node.js"(exports2, module2) {
+  "node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/node.js"(exports2, module2) {
     var tty = require("tty");
     var util = require("util");
     exports2.init = init;
@@ -3353,9 +3353,9 @@ var require_node = __commonJS({
   }
 });
 
-// node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/index.js
+// node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/index.js
 var require_src = __commonJS({
-  "node_modules/.pnpm/debug@4.4.3/node_modules/debug/src/index.js"(exports2, module2) {
+  "node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/src/index.js"(exports2, module2) {
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
       module2.exports = require_browser();
     } else {
@@ -3364,9 +3364,9 @@ var require_src = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/ProgressCallbackTransform.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/ProgressCallbackTransform.js
 var require_ProgressCallbackTransform = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/ProgressCallbackTransform.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/ProgressCallbackTransform.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ProgressCallbackTransform = void 0;
@@ -3423,9 +3423,9 @@ var require_ProgressCallbackTransform = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/httpExecutor.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/httpExecutor.js
 var require_httpExecutor = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/httpExecutor.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/httpExecutor.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DigestTransform = exports2.HttpExecutor = exports2.HttpError = void 0;
@@ -3897,9 +3897,9 @@ Please double check that your authentication token is correct. Due to security r
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/MemoLazy.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/MemoLazy.js
 var require_MemoLazy = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/MemoLazy.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/MemoLazy.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.MemoLazy = void 0;
@@ -3941,9 +3941,9 @@ var require_MemoLazy = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/publishOptions.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/publishOptions.js
 var require_publishOptions = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/publishOptions.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/publishOptions.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.githubUrl = githubUrl;
@@ -4015,9 +4015,9 @@ var require_publishOptions = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/retry.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/retry.js
 var require_retry = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/retry.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/retry.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.retry = retry;
@@ -4039,9 +4039,9 @@ var require_retry = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/rfc2253Parser.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/rfc2253Parser.js
 var require_rfc2253Parser = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/rfc2253Parser.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/rfc2253Parser.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parseDn = parseDn;
@@ -4118,9 +4118,9 @@ var require_rfc2253Parser = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/uuid.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/uuid.js
 var require_uuid = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/uuid.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/uuid.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.nil = exports2.UUID = void 0;
@@ -5863,9 +5863,9 @@ var require_sax = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/xml.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/xml.js
 var require_xml = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/xml.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/xml.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.XElement = void 0;
@@ -5976,9 +5976,9 @@ var require_xml = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/objects.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/objects.js
 var require_objects = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/objects.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/objects.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.mapToObject = mapToObject;
@@ -6077,9 +6077,9 @@ var require_objects = __commonJS({
   }
 });
 
-// node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/index.js
+// node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/index.js
 var require_out = __commonJS({
-  "node_modules/.pnpm/builder-util-runtime@9.7.0/node_modules/builder-util-runtime/out/index.js"(exports2) {
+  "node_modules/.pnpm/builder-util-runtime@9.7.0_supports-color@7.2.0/node_modules/builder-util-runtime/out/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CURRENT_APP_PACKAGE_FILE_NAME = exports2.CURRENT_APP_INSTALLER_FILE_NAME = exports2.objectToArgs = exports2.deepAssign = exports2.asArray = exports2.mapToObject = exports2.isValidKey = exports2.XElement = exports2.parseXml = exports2.UUID = exports2.parseDn = exports2.retry = exports2.githubTagPrefix = exports2.githubUrl = exports2.getS3LikeProviderBaseUrl = exports2.ProgressCallbackTransform = exports2.MemoLazy = exports2.safeStringifyJson = exports2.safeGetHeader = exports2.parseJson = exports2.isSensitiveFieldName = exports2.HttpExecutor = exports2.hashSensitiveValue = exports2.HttpError = exports2.DigestTransform = exports2.createHttpError = exports2.configureRequestUrl = exports2.configureRequestOptionsFromUrl = exports2.configureRequestOptions = exports2.newError = exports2.CancellationToken = exports2.CancellationError = void 0;
@@ -11886,9 +11886,9 @@ var require_lodash = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/DownloadedUpdateHelper.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/DownloadedUpdateHelper.js
 var require_DownloadedUpdateHelper = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/DownloadedUpdateHelper.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/DownloadedUpdateHelper.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DownloadedUpdateHelper = void 0;
@@ -12049,9 +12049,9 @@ var require_DownloadedUpdateHelper = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppAdapter.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppAdapter.js
 var require_AppAdapter = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppAdapter.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppAdapter.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getAppCacheDir = getAppCacheDir;
@@ -12072,9 +12072,9 @@ var require_AppAdapter = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/ElectronAppAdapter.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/ElectronAppAdapter.js
 var require_ElectronAppAdapter = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/ElectronAppAdapter.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/ElectronAppAdapter.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ElectronAppAdapter = void 0;
@@ -12119,9 +12119,9 @@ var require_ElectronAppAdapter = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/electronHttpExecutor.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/electronHttpExecutor.js
 var require_electronHttpExecutor = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/electronHttpExecutor.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/electronHttpExecutor.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ElectronHttpExecutor = exports2.NET_SESSION_NAME = void 0;
@@ -12195,9 +12195,9 @@ var require_electronHttpExecutor = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/util.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/util.js
 var require_util = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/util.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/util.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.newBaseUrl = newBaseUrl;
@@ -12269,9 +12269,9 @@ var require_lodash2 = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/Provider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/Provider.js
 var require_Provider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/Provider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/Provider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Provider = void 0;
@@ -12411,9 +12411,9 @@ var require_Provider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GenericProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GenericProvider.js
 var require_GenericProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GenericProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GenericProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GenericProvider = void 0;
@@ -12464,9 +12464,9 @@ var require_GenericProvider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/BitbucketProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/BitbucketProvider.js
 var require_BitbucketProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/BitbucketProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/BitbucketProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BitbucketProvider = void 0;
@@ -12510,9 +12510,9 @@ var require_BitbucketProvider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GitHubProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GitHubProvider.js
 var require_GitHubProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GitHubProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GitHubProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GitHubProvider = exports2.BaseGitHubProvider = void 0;
@@ -12726,9 +12726,9 @@ ${feedXml}`, "ERR_UPDATER_INVALID_RELEASE_FEED");
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GitLabProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GitLabProvider.js
 var require_GitLabProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/GitLabProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/GitLabProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GitLabProvider = void 0;
@@ -12980,9 +12980,9 @@ var require_GitLabProvider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/KeygenProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/KeygenProvider.js
 var require_KeygenProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/KeygenProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/KeygenProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.KeygenProvider = void 0;
@@ -13030,9 +13030,9 @@ var require_KeygenProvider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/PrivateGitHubProvider.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/PrivateGitHubProvider.js
 var require_PrivateGitHubProvider = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providers/PrivateGitHubProvider.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providers/PrivateGitHubProvider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.PrivateGitHubProvider = void 0;
@@ -13125,9 +13125,9 @@ var require_PrivateGitHubProvider = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providerFactory.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providerFactory.js
 var require_providerFactory = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/providerFactory.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/providerFactory.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isUrlProbablySupportMultiRangeRequests = isUrlProbablySupportMultiRangeRequests;
@@ -13196,9 +13196,9 @@ var require_providerFactory = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/downloadPlanBuilder.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/downloadPlanBuilder.js
 var require_downloadPlanBuilder = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/downloadPlanBuilder.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/downloadPlanBuilder.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.OperationKind = void 0;
@@ -13305,9 +13305,9 @@ rel: ${lastOperation.start - min} until ${lastOperation.end - min} and ${operati
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/DataSplitter.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/DataSplitter.js
 var require_DataSplitter = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/DataSplitter.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/DataSplitter.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DataSplitter = void 0;
@@ -13527,9 +13527,9 @@ var require_DataSplitter = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/multipleRangeDownloader.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/multipleRangeDownloader.js
 var require_multipleRangeDownloader = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/multipleRangeDownloader.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/multipleRangeDownloader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.executeTasksUsingMultipleRangeRequests = executeTasksUsingMultipleRangeRequests;
@@ -13643,9 +13643,9 @@ var require_multipleRangeDownloader = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/ProgressDifferentialDownloadCallbackTransform.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/ProgressDifferentialDownloadCallbackTransform.js
 var require_ProgressDifferentialDownloadCallbackTransform = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/ProgressDifferentialDownloadCallbackTransform.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/ProgressDifferentialDownloadCallbackTransform.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ProgressDifferentialDownloadCallbackTransform = void 0;
@@ -13734,9 +13734,9 @@ var require_ProgressDifferentialDownloadCallbackTransform = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/DifferentialDownloader.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/DifferentialDownloader.js
 var require_DifferentialDownloader = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/DifferentialDownloader.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/DifferentialDownloader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DifferentialDownloader = void 0;
@@ -13983,9 +13983,9 @@ var require_DifferentialDownloader = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/GenericDifferentialDownloader.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/GenericDifferentialDownloader.js
 var require_GenericDifferentialDownloader = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/GenericDifferentialDownloader.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/GenericDifferentialDownloader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GenericDifferentialDownloader = void 0;
@@ -13999,9 +13999,9 @@ var require_GenericDifferentialDownloader = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/types.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/types.js
 var require_types = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/types.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/types.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.UpdaterSignal = exports2.UPDATE_DOWNLOADED = exports2.DOWNLOAD_PROGRESS = exports2.CancellationToken = void 0;
@@ -14047,9 +14047,9 @@ var require_types = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppUpdater.js
 var require_AppUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NoOpLogger = exports2.AppUpdater = void 0;
@@ -14674,9 +14674,9 @@ var require_AppUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/BaseUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/BaseUpdater.js
 var require_BaseUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/BaseUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/BaseUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BaseUpdater = void 0;
@@ -14819,9 +14819,9 @@ var require_BaseUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/FileWithEmbeddedBlockMapDifferentialDownloader.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/FileWithEmbeddedBlockMapDifferentialDownloader.js
 var require_FileWithEmbeddedBlockMapDifferentialDownloader = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/differentialDownloader/FileWithEmbeddedBlockMapDifferentialDownloader.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/differentialDownloader/FileWithEmbeddedBlockMapDifferentialDownloader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.FileWithEmbeddedBlockMapDifferentialDownloader = void 0;
@@ -14860,9 +14860,9 @@ var require_FileWithEmbeddedBlockMapDifferentialDownloader = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppImageUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppImageUpdater.js
 var require_AppImageUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/AppImageUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/AppImageUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.AppImageUpdater = void 0;
@@ -14973,9 +14973,9 @@ var require_AppImageUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/LinuxUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/LinuxUpdater.js
 var require_LinuxUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/LinuxUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/LinuxUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.LinuxUpdater = void 0;
@@ -15084,9 +15084,9 @@ var require_LinuxUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/DebUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/DebUpdater.js
 var require_DebUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/DebUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/DebUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DebUpdater = void 0;
@@ -15168,9 +15168,9 @@ var require_DebUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/PacmanUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/PacmanUpdater.js
 var require_PacmanUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/PacmanUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/PacmanUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.PacmanUpdater = void 0;
@@ -15235,9 +15235,9 @@ var require_PacmanUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/RpmUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/RpmUpdater.js
 var require_RpmUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/RpmUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/RpmUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.RpmUpdater = void 0;
@@ -15304,9 +15304,9 @@ var require_RpmUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/MacUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/MacUpdater.js
 var require_MacUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/MacUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/MacUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.MacUpdater = void 0;
@@ -15550,9 +15550,9 @@ var require_MacUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/windowsExecutableCodeSignatureVerifier.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/windowsExecutableCodeSignatureVerifier.js
 var require_windowsExecutableCodeSignatureVerifier = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/windowsExecutableCodeSignatureVerifier.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/windowsExecutableCodeSignatureVerifier.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.verifySignature = verifySignature;
@@ -15665,9 +15665,9 @@ var require_windowsExecutableCodeSignatureVerifier = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/NsisUpdater.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/NsisUpdater.js
 var require_NsisUpdater = __commonJS({
-  "node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/NsisUpdater.js"(exports2) {
+  "node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/NsisUpdater.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NsisUpdater = void 0;
@@ -15830,7 +15830,7 @@ var require_NsisUpdater = __commonJS({
   }
 });
 
-// node_modules/.pnpm/electron-updater@6.8.9/node_modules/electron-updater/out/main.js
+// node_modules/.pnpm/electron-updater@6.8.9_supports-color@7.2.0/node_modules/electron-updater/out/main.js
 var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
   if (k2 === void 0) k2 = k;
   var desc = Object.getOwnPropertyDescriptor(m, k);

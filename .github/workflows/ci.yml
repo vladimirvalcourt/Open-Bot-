@@ -34,6 +34,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      - name: commercial security and trust gates
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm security:check && pnpm eval:trust
       - name: production UI build
         if: matrix.os == 'ubuntu-latest'
         run: pnpm exec vite build

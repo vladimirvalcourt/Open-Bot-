@@ -7,7 +7,7 @@
 import { memo, useEffect, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy } from "./icons";
 
 // tiny highlight cache so revisiting a thread doesn't re-tokenize settled
 // blocks; keys are content-hashed, capped, never written while streaming
@@ -36,7 +36,11 @@ function CodeBlock({ code, lang, streaming }: { code: string; lang: string; stre
       .then((shiki) =>
         shiki.codeToHtml(code, {
           lang: lang || "text",
-          theme: "github-dark-default",
+          themes: {
+            light: "github-light-default",
+            dark: "github-dark-default",
+          },
+          defaultColor: false,
         }),
       )
       .then((out) => {
@@ -76,7 +80,7 @@ function CodeBlock({ code, lang, streaming }: { code: string; lang: string; stre
       </div>
       {html ? (
         <div
-          className="overflow-x-auto text-[13px] leading-relaxed [&_pre]:!bg-transparent [&_pre]:m-0 [&_pre]:p-3"
+          className="theme-code overflow-x-auto text-[13px] leading-relaxed [&_.shiki]:!bg-transparent [&_pre]:m-0 [&_pre]:p-3"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (

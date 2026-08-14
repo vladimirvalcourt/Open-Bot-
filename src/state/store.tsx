@@ -36,8 +36,10 @@ export interface Message {
   /** screen messages: a frame of the bot's computer (base64) */
   png?: string;
   mime?: string;
+  attachments?: AttachmentInfo[];
   at: number;
 }
+export interface AttachmentInfo { id: string; name: string; mime: string; size: number }
 
 export interface ModelSelection {
   instanceId: string;
@@ -60,16 +62,35 @@ export interface Bot {
   computer?: "cloud" | "local" | "off";
   pinned?: boolean;
   hidden?: boolean;
+  section?: string;
+  projectId?: string;
   messages: Message[];
 }
 
 /** GET /api/config — configured flags only; secrets are never echoed. */
 export interface ConfigStatus {
   xai?: { configured: boolean };
-  composio: { configured: boolean; apiKeyConfigured?: boolean };
+  composio: { configured: boolean };
   box: { configured: boolean };
+  codespaces?: {
+    configured: boolean;
+    tokenConfigured: boolean;
+    repository: string;
+    branch: string;
+    machine: string;
+  };
+  cloud?: { provider: "box" | "codespaces" };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string };
+  apiProviders?: Array<{
+    id: string;
+    name: string;
+    baseUrl: string;
+    model: string;
+    configured: boolean;
+  }>;
+  remote?: { enabled: boolean; host: string; configured: boolean };
+  limits?: { maxConcurrentTasks: number; dailyApiTokens: number };
 }
 
 /** One row of GET /api/instances — the model picker's data. */
@@ -93,7 +114,13 @@ interface AppState {
   selectedId: string;
   settingsOpen: boolean;
   pluginsOpen: boolean;
+  routinesOpen: boolean;
+  workOpen: boolean;
+  memoryOpen: boolean;
+  teamOpen: boolean;
+  missionControlOpen: boolean;
   computerOpen: boolean;
+  browserOpen: boolean;
   appSettingsOpen: boolean;
   /** in-flight assistant text per threadId (content.delta fold) */
   streaming: Record<string, string>;
@@ -115,7 +142,7 @@ type Action =
   | { type: "instances"; instances: InstanceInfo[] }
   | { type: "configStatus"; config: ConfigStatus }
   | { type: "select"; id: string }
-  | { type: "send"; botId: string; text: string }
+  | { type: "send"; botId: string; text: string; attachments?: AttachmentInfo[] }
   | { type: "answerCard"; botId: string; messageId: string; answer: string }
   | { type: "dismissCard"; botId: string; messageId: string }
   | { type: "newBot" }
@@ -136,7 +163,13 @@ type Action =
   | { type: "error"; message: string | null }
   | { type: "toggleSettings"; open?: boolean }
   | { type: "togglePlugins"; open?: boolean }
+  | { type: "toggleRoutines"; open?: boolean }
+  | { type: "toggleWork"; open?: boolean }
+  | { type: "toggleMemory"; open?: boolean }
+  | { type: "toggleTeam"; open?: boolean }
+  | { type: "toggleMissionControl"; open?: boolean }
   | { type: "toggleComputer"; open?: boolean }
+  | { type: "toggleBrowser"; open?: boolean }
   | { type: "toggleAppSettings"; open?: boolean }
   | {
       type: "updateBot";
@@ -144,7 +177,7 @@ type Action =
       patch: Partial<
         Pick<
           Bot,
-          "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression" | "pinned" | "hidden"
+          "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression" | "pinned" | "hidden" | "section"
         >
       >;
     };
@@ -319,10 +352,27 @@ function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open,
         computerOpen: open ? false : state.computerOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
+        browserOpen: open ? false : state.browserOpen,
       };
+    }
+    case "toggleBrowser": {
+      const open = action.open ?? !state.browserOpen;
+      return { ...state, browserOpen: open, computerOpen: open ? false : state.computerOpen, settingsOpen: open ? false : state.settingsOpen, appSettingsOpen: open ? false : state.appSettingsOpen };
     }
     case "togglePlugins":
       return { ...state, pluginsOpen: action.open ?? !state.pluginsOpen };
+    case "toggleRoutines": {
+      const open = action.open ?? !state.routinesOpen;
+      return { ...state, routinesOpen: open, computerOpen: open ? false : state.computerOpen };
+    }
+    case "toggleWork":
+      return { ...state, workOpen: action.open ?? !state.workOpen, pluginsOpen: false, routinesOpen: false };
+    case "toggleMemory":
+      return { ...state, memoryOpen: action.open ?? !state.memoryOpen, pluginsOpen: false, routinesOpen: false, workOpen: false };
+    case "toggleTeam":
+      return { ...state, teamOpen: action.open ?? !state.teamOpen, pluginsOpen: false, routinesOpen: false, workOpen: false, memoryOpen: false };
+    case "toggleMissionControl":
+      return { ...state, missionControlOpen: action.open ?? !state.missionControlOpen, pluginsOpen: false, routinesOpen: false, workOpen: false, memoryOpen: false, teamOpen: false };
     case "toggleComputer": {
       const open = action.open ?? !state.computerOpen;
       return {
@@ -368,7 +418,13 @@ const initialState: AppState = {
   selectedId: "",
   settingsOpen: false,
   pluginsOpen: false,
+  routinesOpen: false,
+  workOpen: false,
+  memoryOpen: false,
+  teamOpen: false,
+  missionControlOpen: false,
   computerOpen: false,
+  browserOpen: false,
   appSettingsOpen: false,
   streaming: {},
   screens: {},
@@ -422,7 +478,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "send":
           api(`/api/bots/${action.botId}/messages`, {
             method: "POST",
-            body: JSON.stringify({ text: action.text }),
+            body: JSON.stringify({ text: action.text, attachmentIds: (action.attachments ?? []).map((item) => item.id) }),
           }).catch(showError);
           break;
         case "answerCard": {
@@ -606,11 +662,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "config":
           rawDispatch({
             type: "configStatus",
-            config: { xai: frame.xai, composio: frame.composio, box: frame.box, profile: frame.profile },
+            config: { xai: frame.xai, composio: frame.composio, box: frame.box, profile: frame.profile, apiProviders: frame.apiProviders, remote: frame.remote, limits: frame.limits },
           });
           api("/api/instances")
             .then(({ instances }) => rawDispatch({ type: "instances", instances }))
             .catch(() => {});
+          break;
+        case "notify":
+          void window.ogb?.notifications?.show(String(frame.title ?? "OpenMausBot"), String(frame.body ?? ""));
           break;
       }
     };

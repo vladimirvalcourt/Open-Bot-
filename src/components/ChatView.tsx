@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, Check, Loader2, Monitor, Square, X } from "lucide-react";
+import { ArrowDown, Check, Globe2, Loader2, Monitor, Square, X } from "./icons";
 import { useStore, formatTime, type Bot, type Message } from "@/state/store";
 import { MausAvatar } from "./Avatar";
 import { stateForBot } from "@/lib/mascot";
+import { isCustomerVisibleActivity } from "@/lib/activity";
+import { systemText } from "@/lib/presentation";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { OptionCard } from "./OptionCard";
 import { Composer } from "./Composer";
@@ -28,6 +30,7 @@ function Bubble({ message }: { message: Message }) {
           user ? "whitespace-pre-wrap bg-bubble-user text-ink" : "bg-card text-ink",
         )}
       >
+        {message.attachments?.length ? <div className="mb-2 flex flex-wrap gap-1.5">{message.attachments.map((item) => <span key={item.id} className="rounded-md bg-raised/80 px-2 py-1 text-[11px] text-ink-secondary">{item.name}</span>)}</div> : null}
         {user ? (
           <>
             <div
@@ -176,6 +179,7 @@ export function ChatView({ bot }: { bot: Bot }) {
             </button>
           )}
           <ModelPicker bot={bot} />
+          <button onClick={() => dispatch({ type: "toggleBrowser" })} className={cn("rounded-md p-1.5 hover:bg-raised", state.browserOpen ? "text-accent" : "text-ink-secondary hover:text-ink")} title="Embedded browser"><Globe2 size={18} /></button>
           <button
             onClick={() => dispatch({ type: "toggleComputer" })}
             className={cn(
@@ -193,7 +197,7 @@ export function ChatView({ bot }: { bot: Bot }) {
       {state.error && (
         <div className="mx-auto w-full max-w-[900px] px-5">
           <div className="mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-danger">
-            {state.error}
+            {systemText(state.error)}
           </div>
         </div>
       )}
@@ -227,7 +231,7 @@ export function ChatView({ bot }: { bot: Bot }) {
               case "options":
                 return <OptionCard key={m.id} botId={bot.id} message={m} />;
               case "activity":
-                return <ActivityChip key={m.id} message={m} />;
+                return isCustomerVisibleActivity(m.tool?.name) ? <ActivityChip key={m.id} message={m} /> : null;
               case "screen":
                 return m.png ? <ScreenFrame key={m.id} png={m.png} mime={m.mime} /> : null;
               default:

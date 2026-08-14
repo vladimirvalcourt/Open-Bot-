@@ -19,6 +19,23 @@ declare global {
       permRequestMic(): Promise<boolean>;
       /** Opens System Settings on a privacy pane: mic|screen|speech. */
       permOpenSettings(pane: "mic" | "screen" | "speech"): Promise<void>;
+      cua?: {
+        status(): Promise<CuaStatus>;
+        requestPermissions(): Promise<CuaStatus>;
+        openSettings(pane: "accessibility" | "screen"): Promise<void>;
+        restart(): Promise<CuaStatus>;
+      };
+      browser?: {
+        show(botId: string, url: string, bounds: { x: number; y: number; width: number; height: number }): Promise<{ url: string; title: string }>;
+        navigate(botId: string, url: string): Promise<{ url: string; title: string }>;
+        action(botId: string, action: "back" | "forward" | "reload"): Promise<{ url: string }>;
+        hide(botId: string): Promise<void>;
+        teachStart(botId: string): Promise<boolean>;
+        teachStop(botId: string): Promise<{ steps: Array<{ action: string; ref?: string; url?: string; value?: string; at: number }> }>;
+      };
+      notifications?: {
+        show(title: string, body: string): Promise<boolean>;
+      };
       /** In-app auto-update (packaged app only; dormant in dev). onState
        * fires immediately with the current state, then on transitions. */
       updater?: {
@@ -32,8 +49,16 @@ declare global {
   }
 }
 
+export interface CuaStatus {
+  available: boolean;
+  accessibility: boolean;
+  screenRecording: boolean;
+  connection?: { mode: "embedded" | "standalone" | "unavailable"; reason?: string } | null;
+  error?: string;
+}
+
 export interface UpdaterState {
-  status: "idle" | "checking" | "available" | "downloading" | "downloaded" | "error";
+  status: "idle" | "checking" | "available" | "downloading" | "downloaded" | "disabled" | "error";
   version?: string;
   percent?: number;
   message?: string;

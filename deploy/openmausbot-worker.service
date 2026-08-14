@@ -1,0 +1,19 @@
+[Unit]
+Description=OpenMausBot always-on worker
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openmausbot
+Environment=OMB_PORT=8799
+Environment=OMB_STATIC_DIR=/opt/openmausbot/ui
+ExecStart=/usr/bin/node /opt/openmausbot/server/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h/.openmausbot
+
+[Install]
+WantedBy=multi-user.target

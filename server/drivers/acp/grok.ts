@@ -22,9 +22,9 @@ const support: AcpSupport = {
   // --permission-mode must always be explicit: ~/.grok/config.toml may set
   // permission_mode = "always-approve", which would silently make every
   // session yolo and never fire session/request_permission.
-  spawnArgs: (config, turn) => [
+  spawnArgs: (_config, turn) => [
     "--permission-mode",
-    config.fullAuto ? "bypassPermissions" : "default",
+    "default",
     ...(turn.model ? ["-m", turn.model] : []),
     "agent",
     "stdio",

@@ -22,7 +22,7 @@ describe("CodexDriver.decodeConfig", () => {
   it("defaults to the codex binary with fullAuto off", () => {
     expect(CodexDriver.decodeConfig({})).toEqual({ cli: "codex", fullAuto: false });
     expect(CodexDriver.decodeConfig(undefined)).toEqual({ cli: "codex", fullAuto: false });
-    expect(CodexDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(true);
+    expect(CodexDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(false);
     // anything non-true is off — a truthy string must not enable full auto
     expect(CodexDriver.decodeConfig({ fullAuto: "yes" }).fullAuto).toBe(false);
   });
@@ -103,6 +103,37 @@ posixOnly("CodexDriver turns (fake app-server)", () => {
     expect(turnStart.params.input[0].text).toBe("You are Testy.\n\nlist files");
   });
 
+  it("moves MCP environments out of Codex argv into single-use secret files", async () => {
+    await create();
+    const dump = join(scratch, "mcp-dump.json");
+    process.env.FAKE_CODEX_DUMP = dump;
+    await instance.adapter.sendTurn({
+      threadId: "t-mcp-config",
+      text: "browse",
+      integrations: {
+        agents: {
+          command: "/Applications/OpenMausBot.app/Contents/MacOS/OpenMausBot",
+          args: ["agents-proxy.js"],
+          env: { ELECTRON_RUN_AS_NODE: "1", OMB_HARNESS_URL: "http://127.0.0.1:8799" },
+        },
+        browser: {
+          command: "/Applications/OpenMausBot.app/Contents/MacOS/OpenMausBot",
+          args: ["browser-proxy.js"],
+          env: { ELECTRON_RUN_AS_NODE: "1", OMB_BROWSER_URL: "http://127.0.0.1:62019" },
+        },
+      },
+    });
+    await recorder.until((event) => event.type === "turn.completed");
+    const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
+    const joined = argv.join(" ");
+    expect(joined).toContain("secure-integration-proxy");
+    expect(joined).not.toContain("OMB_HARNESS_URL");
+    expect(joined).not.toContain("OMB_BROWSER_URL");
+    expect(joined).not.toContain("http://127.0.0.1:8799");
+    expect(joined).not.toContain("http://127.0.0.1:62019");
+    expect(argv).toContain('mcp_servers.agents.env={ "ELECTRON_RUN_AS_NODE" = "1" }');
+  });
+
   it("streams agentMessage deltas without re-emitting the settled text", async () => {
     process.env.FAKE_CODEX_MODE = "stream";
     await create();
@@ -162,16 +193,17 @@ posixOnly("CodexDriver turns (fake app-server)", () => {
     expect(JSON.parse(readFileSync(dump, "utf8")).decision).toEqual({ decision: "approved" });
   });
 
-  it("auto-approves commands in fullAuto without opening a request", async () => {
+  it("forces legacy fullAuto configurations through approval", async () => {
     await create({ mode: "approval", fullAuto: true });
     const dump = join(scratch, "dump.json");
     process.env.FAKE_CODEX_DUMP = dump;
 
     await instance.adapter.sendTurn({ threadId: "t-auto", text: "clean up" });
+    const opened = await recorder.until((e) => e.type === "request.opened");
+    expect(opened).toMatchObject({ tool: "shell" });
+    await instance.adapter.respondToRequest("t-auto", opened.requestId!, { behavior: "deny" });
     await recorder.until((e) => e.type === "turn.completed");
-
-    expect(recorder.events.some((e) => e.type === "request.opened")).toBe(false);
-    expect(JSON.parse(readFileSync(dump, "utf8")).decision).toEqual({ decision: "approved" });
+    expect(JSON.parse(readFileSync(dump, "utf8")).decision).toEqual({ decision: "denied" });
   });
 
   it("rejects a second turn while one is in flight", async () => {

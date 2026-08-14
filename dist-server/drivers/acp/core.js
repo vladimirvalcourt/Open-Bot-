@@ -18,6 +18,7 @@ import { homedir } from "node:os";
 import { newEventId, newId } from "../../contracts.js";
 import { augmentedPath } from "../../env-path.js";
 import { appendNative } from "../native.js";
+import { sealIntegration } from "../../secure-integration.js";
 const INIT_TIMEOUT = 20_000;
 const NEW_SESSION_TIMEOUT = 30_000;
 const LOAD_SESSION_TIMEOUT = 120_000; // history replay on a long thread is slow
@@ -26,7 +27,8 @@ function decodeAcpConfig(defaultCli) {
         const o = (raw ?? {});
         return {
             cli: typeof o.cli === "string" ? o.cli : defaultCli,
-            fullAuto: o.fullAuto === true,
+            // Central governance is authoritative; provider-local bypass is disabled.
+            fullAuto: false,
             workspace: typeof o.workspace === "string" ? o.workspace : undefined,
         };
     };
@@ -72,14 +74,25 @@ export function createAcpDriver(support) {
             // fine here. env is the ACP {name,value}[] shape.
             const acpMcpServers = (turn) => {
                 const servers = [];
+                const composio = turn.integrations?.composio;
+                if (composio) {
+                    const sealed = sealIntegration(composio);
+                    servers.push({ name: "composio", command: sealed.command, args: sealed.args, env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })) });
+                }
                 const agents = turn.integrations?.agents;
                 if (agents) {
+                    const sealed = sealIntegration(agents);
                     servers.push({
                         name: "agents",
-                        command: agents.command,
-                        args: agents.args,
-                        env: Object.entries(agents.env).map(([name, value]) => ({ name, value: String(value) })),
+                        command: sealed.command,
+                        args: sealed.args,
+                        env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })),
                     });
+                }
+                const browser = turn.integrations?.browser;
+                if (browser) {
+                    const sealed = sealIntegration(browser);
+                    servers.push({ name: "browser", command: sealed.command, args: sealed.args, env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })) });
                 }
                 return servers;
             };
@@ -171,16 +184,6 @@ export function createAcpDriver(support) {
                         message: `${DRIVER_KIND} offered no "${want}" permission option — cancelling the request instead of guessing`,
                     });
                     const toolCall = params.toolCall ?? {};
-                    if (config.fullAuto) {
-                        const allow = optionFor("allow");
-                        if (!allow)
-                            missing("allow");
-                        return send({
-                            jsonrpc: "2.0",
-                            id: msg.id,
-                            result: allow ? { outcome: { outcome: "selected", optionId: allow } } : cancelled,
-                        });
-                    }
                     const kind = String(toolCall.kind ?? "");
                     const tool = kind === "execute" ? "shell" : kind === "edit" ? "edit" : kind || "tool";
                     const summary = String(toolCall.rawInput?.command ?? toolCall.title ?? tool).slice(0, 200);
@@ -346,8 +349,16 @@ export function createAcpDriver(support) {
                                 await request("authenticate", { methodId }, INIT_TIMEOUT);
                             }
                             catch {
-                                if (support.authFailure === "fail")
+                                const recoveryArgs = support.authRecoveryArgs?.(config);
+                                if (recoveryArgs) {
+                                    await new Promise((resolve, reject) => {
+                                        execFile(config.cli, recoveryArgs, { cwd, env, timeout: 15 * 60_000, maxBuffer: 64 * 1024 }, (error) => (error ? reject(new Error(support.loginNote)) : resolve()));
+                                    });
+                                    await request("authenticate", { methodId }, INIT_TIMEOUT);
+                                }
+                                else if (support.authFailure === "fail") {
                                     throw new Error(support.loginNote);
+                                }
                                 // else: proceed on an ambient login
                             }
                         }
@@ -431,7 +442,7 @@ export function createAcpDriver(support) {
                 snapshot,
                 adapter: {
                     provider: DRIVER_KIND,
-                    capabilities: { sessionModelSwitch: "unsupported", agentsMcp: true },
+                    capabilities: { sessionModelSwitch: "unsupported", composioMcp: true, agentsMcp: true },
                     sendTurn,
                     interruptTurn: async (threadId) => active.get(threadId)?.interrupt(),
                     respondToRequest: async (threadId, requestId, decision) => {

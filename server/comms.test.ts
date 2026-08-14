@@ -50,11 +50,12 @@ posixOnly("comms e2e (fake ACP fleet)", () => {
   let child: ChildProcess;
   let home: string;
   let stderr = "";
+  const appToken = "comms-test-local-app-token";
 
   const api = async (method: string, path: string, body?: unknown): Promise<{ status: number; body: any }> => {
     const res = await fetch(`${BASE}${path}`, {
       method,
-      headers: body ? { "content-type": "application/json" } : undefined,
+      headers: { authorization: `Bearer ${appToken}`, ...(body ? { "content-type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     return { status: res.status, body: await res.json() };
@@ -84,6 +85,7 @@ posixOnly("comms e2e (fake ACP fleet)", () => {
         HOME: home,
         USERPROFILE: home,
         OMB_PORT: String(PORT),
+        OMB_APP_TOKEN: appToken,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

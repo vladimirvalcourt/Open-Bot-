@@ -14,10 +14,11 @@ import {
   Power,
   Settings,
   X,
-} from "lucide-react";
+} from "./icons";
 import { useStore, type Bot } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
 import { cn } from "@/lib/cn";
+import { systemText } from "@/lib/presentation";
 
 async function api(path: string, init?: RequestInit): Promise<any> {
   const res = await fetch(path, { headers: { "content-type": "application/json" }, ...init });
@@ -40,6 +41,8 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const [phase, setPhase] = useState<Phase>("checking");
   const [boxState, setBoxState] = useState<string | null>(null);
+  const [cloudProvider, setCloudProvider] = useState<"box" | "codespaces">("box");
+  const [cloudScreenshot, setCloudScreenshot] = useState(true);
   const [polledFrame, setPolledFrame] = useState<{ png: string; mime: string } | null>(null);
   const [localFrame, setLocalFrame] = useState<string | null>(null);
   const [pending, setPending] = useState<"join" | "sleep" | null>(null);
@@ -68,12 +71,14 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
     api(`/api/bots/${bot.id}/computer`)
       .then((status) => {
         if (!alive) return;
+        setCloudProvider(status.provider === "codespaces" ? "codespaces" : "box");
+        setCloudScreenshot(status.capabilities?.screenshot !== false);
         const autoLocal = bot.computer !== "cloud" && isElectron;
         if (!status.configured) {
           setPhase(autoLocal ? "local" : "unconfigured");
           return;
         }
-        if (!status.box && autoLocal) {
+        if (!(status.computer ?? status.box) && autoLocal) {
           setPhase("local");
           return;
         }
@@ -99,7 +104,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
   const sseFlowing = Boolean(bot.busy && live);
   const inFlight = useRef(false);
   useEffect(() => {
-    if (phase !== "ready" || sseFlowing) return;
+    if (phase !== "ready" || sseFlowing || !cloudScreenshot) return;
     let alive = true;
     const shoot = async () => {
       if (inFlight.current) return;
@@ -119,7 +124,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       alive = false;
       clearInterval(timer);
     };
-  }, [phase, sseFlowing, bot.id]);
+  }, [phase, sseFlowing, bot.id, cloudScreenshot]);
 
   // local preview: frames from the Electron main process. The FIRST capture
   // attempt is what makes macOS show the Screen Recording prompt (there is
@@ -221,7 +226,9 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
               )}
               <span className="text-[12px]">
                 {phase === "ready"
-                  ? "Waiting for the first frame…"
+                  ? cloudScreenshot
+                    ? "Waiting for the first frame…"
+                    : "GitHub Codespace ready. It provides an isolated Linux shell; use the embedded browser for visual web work."
                   : phase === "local"
                     ? localMisses >= 3
                       ? "No frames yet — the preview needs Screen Recording permission. After granting, relaunch the app (macOS applies it on next launch)."
@@ -242,13 +249,14 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
 
         {error && (
           <div className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">
-            {error}
+            {systemText(error)}
           </div>
         )}
-        {phase === "unconfigured" && (
+        {phase === "unconfigured" && cloudProvider === "box" && (
           <div className="mt-3 rounded-xl bg-card p-4">
             <div className="mb-3 text-[13px] text-ink-secondary">
               Paste a Box token from box.ascii.dev to give this bot a cloud computer — it spins up right here.
+              <a href="https://box.ascii.dev" target="_blank" rel="noreferrer" className="ml-1 underline">Get a token</a>
             </div>
             <ApiKeyRow
               section="box"
@@ -256,6 +264,19 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
               placeholder="Token from box.ascii.dev"
               onSaved={(configured) => configured && setRetry((n) => n + 1)}
             />
+          </div>
+        )}
+        {phase === "unconfigured" && cloudProvider === "codespaces" && (
+          <div className="mt-3 rounded-xl bg-card p-4">
+            <div className="text-[13px] text-ink-secondary">
+              Add a GitHub token with Codespaces access and choose an owner/repository in App Settings.
+            </div>
+            <button
+              onClick={() => dispatch({ type: "toggleAppSettings", open: true })}
+              className="mt-3 w-full rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover"
+            >
+              Open App Settings
+            </button>
           </div>
         )}
 
@@ -268,7 +289,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
             >
               {pending === "join" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-              Open desktop
+              {cloudProvider === "codespaces" ? "Open Codespace" : "Open desktop"}
             </button>
             {boxState !== "archived" && (
               <button
@@ -294,7 +315,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
             {(
               [
-                ["cloud", "Cloud box"],
+                ["cloud", "Cloud"],
                 ["local", "This Mac"],
                 ["off", "Off"],
               ] as const
@@ -326,9 +347,8 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
             Routines are recurring tasks this agent runs on a schedule.
           </div>
           <button
-            disabled
-            className="mt-3 w-full cursor-not-allowed rounded-lg bg-raised py-2 text-[13px] text-ink-secondary opacity-60"
-            title="Coming soon"
+            onClick={() => dispatch({ type: "toggleRoutines", open: true })}
+            className="mt-3 w-full rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover"
           >
             Create Routine
           </button>

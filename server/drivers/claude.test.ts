@@ -27,9 +27,9 @@ describe("ClaudeDriver.decodeConfig", () => {
     expect(ClaudeDriver.decodeConfig(undefined)).toEqual({ cli: "claude", permissionMode: "acceptEdits" });
   });
 
-  it("accepts the three known permission modes", () => {
+  it("normalizes unsafe legacy permission modes to centrally governed approval", () => {
     for (const permissionMode of ["acceptEdits", "auto", "bypassPermissions"] as const) {
-      expect(ClaudeDriver.decodeConfig({ permissionMode }).permissionMode).toBe(permissionMode);
+      expect(ClaudeDriver.decodeConfig({ permissionMode }).permissionMode).toBe("acceptEdits");
     }
   });
 
@@ -133,7 +133,7 @@ posixOnly("ClaudeDriver turns (fake CLI)", () => {
     expect(seen.env.CLAUDE_CODE_ENTRYPOINT).toBeUndefined();
   });
 
-  it("mounts the agents comms proxy as an MCP server and pre-allows its tools", async () => {
+  it("mounts agents without putting its token in argv and pre-allows read-only tools only", async () => {
     await create();
     const dump = join(scratch, "dump.json");
     process.env.FAKE_CLAUDE_DUMP = dump;
@@ -153,12 +153,13 @@ posixOnly("ClaudeDriver turns (fake CLI)", () => {
 
     const seen = JSON.parse(readFileSync(dump, "utf8"));
     const mcpConfig = JSON.parse(seen.argv[seen.argv.indexOf("--mcp-config") + 1]);
-    expect(mcpConfig.mcpServers.agents).toMatchObject({
-      args: ["/fake/agents-proxy.js"],
-      env: { OMB_BOT_ID: "b1", OMB_COMMS_TOKEN: "tok" },
-    });
+    expect(JSON.stringify(seen.argv)).not.toContain("OMB_COMMS_TOKEN");
+    expect(JSON.stringify(seen.argv)).not.toContain("tok");
+    expect(mcpConfig.mcpServers.agents).toMatchObject({ args: expect.any(Array) });
     const allowed = seen.argv[seen.argv.indexOf("--allowedTools") + 1];
-    expect(allowed).toContain("mcp__agents");
+    expect(allowed).toContain("mcp__agents__list_bots");
+    expect(allowed).not.toContain("mcp__agents__ask_bot");
+    expect(allowed).not.toContain("mcp__agents__remember");
   });
 
   it("resumes with --resume when a cursor exists and reports that session id", async () => {
