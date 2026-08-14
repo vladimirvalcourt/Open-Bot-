@@ -19,6 +19,7 @@ import { DATA_DIR } from "../config.js";
 import { augmentedPath } from "../env-path.js";
 import { newEventId, newId } from "../contracts.js";
 import { appendNative } from "./native.js";
+import { sealIntegration } from "../secure-integration.js";
 const DRIVER_KIND = "claudeAgent";
 // model catalog ported from upstream packages/contracts/src/model.ts
 const MODELS = {
@@ -145,7 +146,9 @@ function decodeConfig(raw) {
     }
     return {
         cli: typeof o.cli === "string" ? o.cli : "claude",
-        permissionMode: mode ?? "acceptEdits",
+        // Unsafe legacy modes are accepted for migration but normalized to the
+        // centrally governed mode instead of bypassing the Trust Center.
+        permissionMode: "acceptEdits",
     };
 }
 function firstText(content) {
@@ -193,7 +196,10 @@ export const ClaudeDriver = {
                 "--output-format", "stream-json",
                 "--input-format", "stream-json",
                 "--verbose", // required by stream-json output
-                "--permission-mode", config.permissionMode === "auto" ? "acceptEdits" : config.permissionMode,
+                // token-level streaming: content_block_delta events between the
+                // whole-message frames, so the bubble grows as the model writes
+                "--include-partial-messages",
+                "--permission-mode", "acceptEdits",
             ];
             if (sessionId)
                 args.push("--resume", sessionId);
@@ -207,16 +213,11 @@ export const ClaudeDriver = {
             // acceptEdits run silently denies anything unlisted)
             const mcpServers = {};
             const allowed = [];
-            if (turn.integrations?.composio?.key) {
-                mcpServers.composio = {
-                    type: "http",
-                    url: turn.integrations.composio.url || "https://connect.composio.dev/mcp",
-                    headers: { "x-consumer-api-key": turn.integrations.composio.key },
-                };
-                allowed.push("mcp__composio");
+            if (turn.integrations?.composio) {
+                mcpServers.composio = sealIntegration(turn.integrations.composio);
             }
             if (turn.integrations?.computer) {
-                mcpServers.computer = {
+                mcpServers.computer = sealIntegration({
                     command: process.execPath,
                     args: [PROXY_PATH],
                     env: {
@@ -224,21 +225,36 @@ export const ClaudeDriver = {
                         OGB_BOX_ID: turn.integrations.computer.boxId,
                         OGB_BOX_TOKEN: turn.integrations.computer.token,
                     },
-                };
-                allowed.push("mcp__computer");
+                });
+                allowed.push("mcp__computer__screenshot");
+            }
+            else if (turn.integrations?.remoteComputer) {
+                mcpServers.computer = sealIntegration(turn.integrations.remoteComputer);
+                allowed.push("mcp__computer__computer_state");
             }
             else if (turn.integrations?.localComputer) {
                 // this Mac, via the Electron-owned cua-driver daemon (spawn config
                 // read from cua-connection.json — same "computer" name either way,
                 // the agent just sees a computer)
-                mcpServers.computer = { ...turn.integrations.localComputer };
-                allowed.push("mcp__computer");
+                mcpServers.computer = sealIntegration(turn.integrations.localComputer);
+                allowed.push("mcp__computer__screenshot", "mcp__computer__computer_state");
             }
-            // permission broker: anything acceptEdits would silently deny becomes
-            // an Allow/Deny card in chat, and the agent gets ask_user. Skipped in
-            // bypassPermissions (fullAuto) — nothing would ever ask.
+            // peer-agent comms (list_bots/ask_bot) — the harness builds the whole
+            // spawn contract (command/args/env incl. the boot token) in
+            // agentsIntegration(); pre-allowing matters doubly here, or the CLI's
+            // own ListAgents look-alike shadows it and "@Bot" asks go nowhere
+            if (turn.integrations?.agents) {
+                mcpServers.agents = sealIntegration(turn.integrations.agents);
+                allowed.push("mcp__agents__list_capabilities", "mcp__agents__list_bots", "mcp__agents__search_memory", "mcp__agents__list_routines");
+            }
+            if (turn.integrations?.browser) {
+                mcpServers.browser = sealIntegration(turn.integrations.browser);
+                allowed.push("mcp__browser__state", "mcp__browser__snapshot", "mcp__browser__screenshot", "mcp__browser__wait");
+            }
+            // Permission broker: anything outside the exact read-only allowlist
+            // becomes an Allow/Deny card in chat, and the agent gets ask_user.
             let broker;
-            if (config.permissionMode !== "bypassPermissions") {
+            {
                 const socketPath = permissionSocketPath(threadId);
                 broker = createPermissionBroker({
                     socketPath,
@@ -261,7 +277,7 @@ export const ClaudeDriver = {
                 });
                 args.push("--permission-prompt-tool", "mcp__ogb__approve");
                 mcpServers.ogb = { command: process.execPath, args: [PERM_PROXY_PATH, socketPath], env: { ...NODE_ENV_FLAG } };
-                allowed.push("mcp__ogb");
+                allowed.push("mcp__ogb__approve", "mcp__ogb__ask_user");
             }
             if (Object.keys(mcpServers).length) {
                 args.push("--mcp-config", JSON.stringify({ mcpServers }));
@@ -288,6 +304,10 @@ export const ClaudeDriver = {
                 active.delete(threadId);
                 emit({ ...base(threadId, turnId), type: "turn.completed", ok, stopReason, cost });
             };
+            // token streaming: true while --include-partial-messages is delivering
+            // text deltas for the current assistant message, so the whole-message
+            // frame that follows doesn't re-emit the same text as one big delta
+            let sawStreamDelta = false;
             const handleLine = (line) => {
                 let o;
                 try {
@@ -306,11 +326,33 @@ export const ClaudeDriver = {
                             emit({ ...base(threadId, turnId), type: "item.updated", itemType: "reasoning", tokens: o.estimated_tokens });
                         }
                         break;
+                    case "stream_event": {
+                        // subagent narration is dropped — N parallel Tasks would
+                        // interleave their prose into one bubble (upstream-verified bug)
+                        if (o.parent_tool_use_id)
+                            break;
+                        const ev = o.event ?? {};
+                        if (ev.type !== "content_block_delta")
+                            break;
+                        const d = ev.delta ?? {};
+                        if (d.type === "text_delta" && typeof d.text === "string" && d.text) {
+                            sawStreamDelta = true;
+                            emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta: d.text });
+                        }
+                        else if (d.type === "thinking_delta" && typeof d.thinking === "string" && d.thinking) {
+                            emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "reasoning_text", delta: d.thinking });
+                        }
+                        break;
+                    }
                     case "assistant": {
                         const msg = o.message ?? {};
                         const text = firstText(msg.content);
                         if (text.trim()) {
-                            emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta: text });
+                            // fallback delta for CLIs/paths that never streamed the block
+                            if (!sawStreamDelta) {
+                                emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta: text });
+                            }
+                            sawStreamDelta = false;
                             emit({ ...base(threadId, turnId), type: "item.completed", itemType: "assistant_text", text });
                         }
                         for (const b of Array.isArray(msg.content) ? msg.content : []) {
@@ -409,7 +451,7 @@ export const ClaudeDriver = {
             snapshot,
             adapter: {
                 provider: DRIVER_KIND,
-                capabilities: { sessionModelSwitch: "in-session" },
+                capabilities: { sessionModelSwitch: "in-session", composioMcp: true, agentsMcp: true },
                 sendTurn,
                 interruptTurn: async (threadId) => active.get(threadId)?.stop(),
                 respondToRequest: async (threadId, requestId, decision) => {

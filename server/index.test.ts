@@ -14,6 +14,7 @@ const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(SERVER_DIR, "..");
 const PORT = 18800 + Math.floor(Math.random() * 10_000);
 const BASE = `http://127.0.0.1:${PORT}`;
+const APP_TOKEN = "test-local-app-token-32-bytes-minimum";
 
 let child: ChildProcess;
 let home: string;
@@ -22,7 +23,7 @@ let stderr = "";
 const api = async (method: string, path: string, body?: unknown): Promise<{ status: number; body: any }> => {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body ? { "content-type": "application/json" } : undefined,
+    headers: { authorization: `Bearer ${APP_TOKEN}`, ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   return { status: res.status, body: await res.json() };
@@ -45,6 +46,8 @@ beforeAll(async () => {
       HOME: home,
       USERPROFILE: home,
       OMB_PORT: String(PORT),
+      OMB_APP_TOKEN: APP_TOKEN,
+      OMB_TRUST_TLS_PROXY: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -107,9 +110,9 @@ describe("harness HTTP API", () => {
     expect(created.status).toBe(201);
     const bot = created.body.bot;
 
-    const patched = await api("PATCH", `/api/bots/${bot.id}`, { name: "Renamed", pinned: true });
+    const patched = await api("PATCH", `/api/bots/${bot.id}`, { name: "Renamed", pinned: true, section: "Research" });
     expect(patched.status).toBe(200);
-    expect(patched.body.bot).toMatchObject({ name: "Renamed", pinned: true });
+    expect(patched.body.bot).toMatchObject({ name: "Renamed", pinned: true, section: "Research" });
 
     const missing = await api("PATCH", "/api/bots/does-not-exist", { name: "x" });
     expect(missing.status).toBe(404);
@@ -143,6 +146,19 @@ describe("harness HTTP API", () => {
     expect(send.body.error).toContain("unavailable");
   });
 
+  it("enhances a rough prompt without sending it or requiring a live provider", async () => {
+    const { body } = await api("GET", "/api/bots");
+    const bot = body.bots[0];
+    const beforeMessages = bot.messages.length;
+    const enhanced = await api("POST", `/api/bots/${bot.id}/enhance-prompt`, { text: "do reserarch about xyz" });
+    expect(enhanced.status).toBe(200);
+    expect(enhanced.body.source).toBe("structured");
+    expect(enhanced.body.text).toContain("Research task:");
+    expect(enhanced.body.text).toContain("credible, current primary sources");
+    const after = (await api("GET", "/api/bots")).body.bots.find((item: { id: string }) => item.id === bot.id);
+    expect(after.messages).toHaveLength(beforeMessages);
+  });
+
   it("saves config keys write-only and reports booleans", async () => {
     const before = await api("GET", "/api/config");
     expect(before.body.box).toEqual({ configured: false });
@@ -160,6 +176,28 @@ describe("harness HTTP API", () => {
     expect(nothing.status).toBe(400);
   });
 
+  it("validates Codespaces configuration without echoing its token", async () => {
+    const invalid = await api("PATCH", "/api/config", {
+      cloud: { provider: "codespaces" },
+      codespaces: { token: "github-secret", repository: "https://github.com/owner/repo" },
+    });
+    expect(invalid.status).toBe(400);
+
+    const saved = await api("PATCH", "/api/config", {
+      cloud: { provider: "codespaces" },
+      codespaces: { token: "github-secret", repository: "owner/repo", branch: "main" },
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.cloud).toEqual({ provider: "codespaces" });
+    expect(saved.body.codespaces).toMatchObject({
+      configured: true,
+      tokenConfigured: true,
+      repository: "owner/repo",
+      branch: "main",
+    });
+    expect(JSON.stringify(saved.body)).not.toContain("github-secret");
+  });
+
   it("stores and echoes the user profile (not write-only, unlike keys)", async () => {
     const put = await api("PUT", "/api/config", { profile: { name: "Ada Lovelace", email: "Ada@Example.com" } });
     expect(put.status).toBe(200);
@@ -167,6 +205,116 @@ describe("harness HTTP API", () => {
 
     const after = await api("GET", "/api/config");
     expect(after.body.profile).toEqual({ name: "Ada Lovelace", email: "Ada@Example.com" });
+  });
+
+  it("adds and removes an OpenAI-compatible provider without echoing its API key", async () => {
+    const created = await api("POST", "/api/providers", {
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "sk-super-secret-provider-key",
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.apiProviders).toHaveLength(1);
+    expect(created.body.apiProviders[0]).toMatchObject({
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      configured: true,
+    });
+    expect(JSON.stringify(created.body)).not.toContain("sk-super-secret-provider-key");
+
+    const instances = await api("GET", "/api/instances");
+    expect(instances.body.instances.some((instance: { driverKind: string; displayName: string }) =>
+      instance.driverKind === "openaiCompatible" && instance.displayName === "DeepSeek",
+    )).toBe(true);
+
+    const id = created.body.apiProviders[0].id;
+    const removed = await api("DELETE", `/api/providers/${id}`);
+    expect(removed.status).toBe(200);
+    expect(removed.body.apiProviders).toEqual([]);
+    expect((await api("DELETE", `/api/providers/${id}`)).status).toBe(404);
+  });
+
+  it("rejects insecure remote API provider URLs", async () => {
+    const result = await api("POST", "/api/providers", {
+      name: "Unsafe",
+      baseUrl: "http://example.com/v1",
+      model: "model",
+      apiKey: "secret",
+    });
+    expect(result.status).toBe(400);
+    expect(result.body.error).toContain("HTTPS");
+  });
+
+  it("enforces Trust Center modes and emergency stop server-side", async () => {
+    const initial = await api("GET", "/api/governance");
+    expect(initial.body.governance.trust.defaultMode).toBe("approve");
+    const patched = await api("PATCH", "/api/governance", { trust: { defaultMode: "observe" }, privacy: { analytics: false } });
+    expect(patched.body.governance.trust.defaultMode).toBe("observe");
+    const stopped = await api("POST", "/api/governance/emergency-stop");
+    expect(stopped.body.governance.trust.emergencyStopped).toBe(true);
+    const bots = (await api("GET", "/api/bots")).body.bots;
+    const blocked = await api("POST", `/api/bots/${bots[0].id}/messages`, { text: "hello" });
+    expect(blocked.status).toBe(423);
+    expect((await api("POST", "/api/governance/resume")).body.governance.trust.emergencyStopped).toBe(false);
+  });
+
+  it("exposes Mission Control and setup certification without credentials", async () => {
+    const mission = await api("GET", "/api/mission-control");
+    expect(mission.status).toBe(200);
+    expect(mission.body.overview).toMatchObject({ totalBots: expect.any(Number), pendingApprovals: expect.any(Number) });
+    expect(JSON.stringify(mission.body)).not.toContain("tok_secret_value");
+    const setup = await api("GET", "/api/setup/certification");
+    expect(setup.body.checks.some((check: { id: string }) => check.id === "trust")).toBe(true);
+  });
+
+  it("rejects cross-origin requests to the local control API", async () => {
+    const response = await fetch(`${BASE}/api/bots`, { headers: { origin: "https://evil.example", authorization: `Bearer ${APP_TOKEN}` } });
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects unauthenticated loopback callers", async () => {
+    expect((await fetch(`${BASE}/api/bots`)).status).toBe(401);
+    expect((await fetch(`${BASE}/api/governance`, { headers: { origin: `http://127.0.0.1:${PORT}` } })).status).toBe(401);
+  });
+
+  it("accepts remote bearer auth only through the trusted HTTPS proxy", async () => {
+    const enabled = await api("POST", "/api/remote", { enabled: true });
+    const remoteToken = enabled.body.token;
+    expect(typeof remoteToken).toBe("string");
+    const plaintext = await fetch(`${BASE}/api/bots`, { headers: { "x-forwarded-proto": "http", authorization: `Bearer ${remoteToken}` } });
+    expect(plaintext.status).toBe(426);
+    const wrong = await fetch(`${BASE}/api/bots`, { headers: { "x-forwarded-proto": "https", authorization: "Bearer wrong" } });
+    expect(wrong.status).toBe(401);
+    const secure = await fetch(`${BASE}/api/bots`, { headers: { "x-forwarded-proto": "https", authorization: `Bearer ${remoteToken}` } });
+    expect(secure.status).toBe(200);
+  });
+
+  it("installs professional templates once with routines paused", async () => {
+    const installed = await api("POST", "/api/templates/research-lab/apply", { timezone: "America/New_York" });
+    expect(installed.status).toBe(201);
+    expect(installed.body.bots).toHaveLength(3);
+    expect(installed.body.routines.every((routine: { enabled: boolean }) => !routine.enabled)).toBe(true);
+    expect((await api("POST", "/api/templates/research-lab/apply", {})).status).toBe(409);
+  });
+
+  it("creates, toggles, lists, and deletes a scheduled routine", async () => {
+    const bots = (await api("GET", "/api/bots")).body.bots;
+    const created = await api("POST", "/api/routines", {
+      botId: bots[0].id,
+      name: "Daily brief",
+      prompt: "Summarize what needs attention.",
+      cadence: "daily",
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.routine).toMatchObject({ name: "Daily brief", cadence: "daily", enabled: true });
+
+    const toggled = await api("PATCH", `/api/routines/${created.body.routine.id}`, { enabled: false });
+    expect(toggled.body.routine.enabled).toBe(false);
+    const listed = await api("GET", "/api/routines");
+    expect(listed.body.routines.some((routine: { id: string }) => routine.id === created.body.routine.id)).toBe(true);
+    expect((await api("DELETE", `/api/routines/${created.body.routine.id}`)).status).toBe(200);
   });
 
   it("404s unknown routes with the route in the error", async () => {

@@ -2,10 +2,11 @@
 // Routing is by exact instanceId only — an entry is never inferred from a
 // driver kind, and unavailable instances render disabled with the reason.
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "./icons";
 import { useStore, type Bot, type InstanceInfo } from "@/state/store";
 import { ProviderMark } from "./ProviderIcons";
 import { cn } from "@/lib/cn";
+import { systemText } from "@/lib/presentation";
 
 function modelLabel(instance: InstanceInfo | undefined, model: string): string {
   return instance?.models.options.find((o) => o.id === model)?.label ?? model;
@@ -73,7 +74,7 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
                   onClick={() => setRailId(instance.instanceId)}
                   title={
                     unavailable
-                      ? `${instance.displayName} — ${instance.snapshot.reason ?? "unavailable"}`
+                      ? `${instance.displayName} — ${systemText(instance.snapshot.reason, "Unavailable")}`
                       : instance.displayName
                   }
                   className={cn(
@@ -96,8 +97,10 @@ export function ModelPicker({ bot, className }: { bot: Bot; className?: string }
                   <div className="text-[13px] font-semibold text-ink">{railInstance.displayName}</div>
                   <div className="truncate text-[11px] text-ink-secondary">
                     {railInstance.snapshot.state === "available"
-                      ? (railInstance.snapshot.version ?? "ready")
-                      : (railInstance.snapshot.reason ?? "unavailable")}
+                      ? railInstance.snapshot.authenticated === false
+                        ? `${railInstance.snapshot.version ?? "installed"} · sign-in opens on first message`
+                        : (railInstance.snapshot.version ?? "ready")
+                      : systemText(railInstance.snapshot.reason, "Unavailable")}
                   </div>
                 </div>
                 {railInstance.models.options.map((option) => {

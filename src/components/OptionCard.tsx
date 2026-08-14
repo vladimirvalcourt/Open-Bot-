@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X } from "./icons";
 import { useStore, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 

@@ -1,0 +1,8 @@
+FROM node:24-bookworm-slim
+WORKDIR /app
+COPY dist-server ./server
+COPY dist ./ui
+ENV OMB_STATIC_DIR=/app/ui OMB_PORT=8799
+# Loopback-only by design. Put a TLS reverse proxy in the same network
+# namespace in front of this process and set OMB_TRUST_TLS_PROXY=1 there.
+CMD ["node", "server/index.js"]

@@ -14,11 +14,11 @@
 // The resulting connection descriptor is written to
 // <userData>/cua-connection.json for the harness server to hand to drivers.
 
-import { app, ipcMain } from "electron";
-import { spawnSync } from "node:child_process";
+import { app, ipcMain, shell, systemPreferences } from "electron";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const INSTALLED_DRIVER = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const STANDALONE_SOCKET = path.join(
@@ -29,6 +29,39 @@ const HOST_BUNDLE_ID = "com.openmausbot.app";
 
 let embeddedHost = null; // EmbeddedCuaDriverHost | null
 let connection = null; // descriptor exposed to harness + renderer
+
+function persistConnection(next) {
+  connection = next;
+  const connectionPath = path.join(app.getPath("userData"), "cua-connection.json");
+  fs.writeFileSync(
+    connectionPath,
+    JSON.stringify(connection, null, 2),
+    { mode: 0o600 },
+  );
+  fs.chmodSync(connectionPath, 0o600);
+  return connection;
+}
+
+function readMacOSPermissions() {
+  if (process.platform !== "darwin") {
+    return { accessibility: false, screenRecording: false };
+  }
+  return {
+    accessibility: systemPreferences.isTrustedAccessibilityClient(false),
+    screenRecording: systemPreferences.getMediaAccessStatus("screen") === "granted",
+  };
+}
+
+function cuaSdkUrl(entrypoint) {
+  if (!app.isPackaged) return `@trycua/cua-driver/${entrypoint}`;
+  return pathToFileURL(
+    path.join(
+      process.resourcesPath,
+      "cua-sdk/node_modules/@trycua/cua-driver/dist",
+      `${entrypoint}.js`,
+    ),
+  ).href;
+}
 
 export function resolveDriverBinary() {
   if (process.env.CUA_DRIVER_PATH) return process.env.CUA_DRIVER_PATH;
@@ -57,7 +90,7 @@ function socketAlive(sockPath) {
 async function startEmbedded(binary) {
   // Dynamic import: the SDK ships a native FFI lib; keep dev startup
   // resilient if it fails to load on this machine.
-  const { EmbeddedCuaDriverHost } = await import("@trycua/cua-driver/embedded");
+  const { EmbeddedCuaDriverHost } = await import(cuaSdkUrl("embedded"));
   embeddedHost = new EmbeddedCuaDriverHost(binary, HOST_BUNDLE_ID);
   const conn = await embeddedHost.start();
   return {
@@ -72,8 +105,7 @@ async function startEmbedded(binary) {
 export async function startCua() {
   const binary = resolveDriverBinary();
   if (!binary) {
-    connection = { mode: "unavailable", reason: "cua-driver binary not found" };
-    return connection;
+    return persistConnection({ mode: "unavailable", reason: "cua-driver binary not found" });
   }
 
   const wantEmbedded =
@@ -81,7 +113,15 @@ export async function startCua() {
 
   if (wantEmbedded) {
     try {
-      connection = await startEmbedded(binary);
+      const permissions = readMacOSPermissions();
+      if (!permissions.accessibility || !permissions.screenRecording) {
+        connection = {
+          mode: "unavailable",
+          reason: "computer permissions are required",
+        };
+      } else {
+        connection = await startEmbedded(binary);
+      }
     } catch (err) {
       connection = {
         mode: "unavailable",
@@ -105,25 +145,65 @@ export async function startCua() {
     };
   }
 
-  fs.writeFileSync(
-    path.join(app.getPath("userData"), "cua-connection.json"),
-    JSON.stringify(connection, null, 2),
-  );
-  return connection;
+  return persistConnection(connection);
 }
 
-export function cuaPermissionsStatus() {
+export async function cuaPermissionsStatus() {
   const binary = resolveDriverBinary();
-  if (!binary) return { available: false };
-  const out = spawnSync(binary, ["permissions", "status", "--json"], {
-    encoding: "utf8",
-    timeout: 5000,
-  });
-  try {
-    return { available: true, ...JSON.parse(out.stdout) };
-  } catch {
-    return { available: true, raw: out.stdout?.trim() };
+  if (!binary) {
+    return { available: false, accessibility: false, screenRecording: false, connection };
   }
+  try {
+    const permissions = readMacOSPermissions();
+    // A live embedded daemon is stronger evidence than macOS's cached
+    // screen preflight result: startCua refuses to launch it without both
+    // grants, while CGPreflight can stay stale until the host restarts.
+    if (connection?.mode === "embedded") {
+      permissions.accessibility = true;
+      permissions.screenRecording = true;
+    }
+    return { available: true, ...permissions, connection };
+  } catch (err) {
+    return {
+      available: true,
+      accessibility: false,
+      screenRecording: false,
+      connection,
+      error: err?.message ?? String(err),
+    };
+  }
+}
+
+export async function requestCuaPermissions() {
+  if (process.platform !== "darwin" || !resolveDriverBinary()) {
+    return cuaPermissionsStatus();
+  }
+
+  const {
+    hasRequiredMacOSPermissions,
+    openMacOSScreenRecordingSettings,
+    requestMacOSPermissions,
+  } =
+    await import(cuaSdkUrl("electron"));
+  // This is the only prompting call in the CUA flow. It is reached solely
+  // from the renderer's explicit Enable action.
+  const permissions = requestMacOSPermissions();
+  if (!hasRequiredMacOSPermissions(permissions) && !permissions.screenRecording) {
+    await openMacOSScreenRecordingSettings();
+  }
+
+  if (hasRequiredMacOSPermissions(permissions) && connection?.mode !== "embedded") {
+    await stopCua();
+    try {
+      persistConnection(await startEmbedded(resolveDriverBinary()));
+    } catch (err) {
+      persistConnection({
+        mode: "unavailable",
+        reason: `embedded host failed: ${err?.message ?? err}`,
+      });
+    }
+  }
+  return cuaPermissionsStatus();
 }
 
 export async function stopCua() {
@@ -138,7 +218,21 @@ export async function stopCua() {
   }
 }
 
-export function registerCuaIpc() {
-  ipcMain.handle("cua:connection", () => connection);
-  ipcMain.handle("cua:permissions", () => cuaPermissionsStatus());
+export function registerCuaIpc(assertSender = () => {}) {
+  ipcMain.handle("cua:connection", (event) => { assertSender(event); return connection; });
+  ipcMain.handle("cua:permissions", (event) => { assertSender(event); return cuaPermissionsStatus(); });
+  ipcMain.handle("cua:request-permissions", (event) => { assertSender(event); return requestCuaPermissions(); });
+  ipcMain.handle("cua:open-settings", (event, pane) => {
+    assertSender(event);
+    const privacyPane = pane === "screen" ? "Privacy_ScreenCapture" : "Privacy_Accessibility";
+    return shell.openExternal(
+      `x-apple.systempreferences:com.apple.preference.security?${privacyPane}`,
+    );
+  });
+  ipcMain.handle("cua:restart", async (event) => {
+    assertSender(event);
+    await stopCua();
+    await startCua();
+    return cuaPermissionsStatus();
+  });
 }

@@ -1,12 +1,12 @@
-import { ChevronLeft, X } from "lucide-react";
-import { useStore, type Bot } from "@/state/store";
+import { ChevronLeft, X } from "./icons";
+import { api, useStore, type Bot } from "@/state/store";
+import { useEffect, useState } from "react";
 import { MausAvatar } from "./Avatar";
 import {
-  expressionForBot,
+  PICKABLE_STATES,
+  stateForBot,
   MAUS_COLORS,
   MAUS_COLOR_NAMES,
-  MAUS_EXPRESSIONS,
-  MAUS_MOTIONS,
 } from "@/lib/mascot";
 import { ModelPicker } from "./ModelPicker";
 import { cn } from "@/lib/cn";
@@ -31,12 +31,14 @@ const inputCls =
 
 export function SettingsPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => { api("/api/projects").then((value) => setProjects(value.projects ?? [])).catch(() => {}); }, []);
   const patch = (
     p: Partial<
-      Pick<Bot, "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression">
+      Pick<Bot, "name" | "title" | "description" | "notifications" | "computer" | "color" | "mascotExpression" | "projectId">
     >,
   ) => dispatch({ type: "updateBot", botId: bot.id, patch: p });
-  const activeExpression = expressionForBot(bot);
+  const activeState = stateForBot(bot);
   const mascotMotion = state.mascotMotion?.botId === bot.id ? state.mascotMotion : null;
 
   return (
@@ -62,7 +64,7 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
         <div className="flex justify-center py-5">
           <MausAvatar
             color={bot.color}
-            expression={activeExpression}
+            state={activeState}
             size={112}
             motion={mascotMotion?.kind ?? "none"}
             motionKey={mascotMotion?.nonce ?? 0}
@@ -88,18 +90,18 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                 Expression
               </div>
               <div className="grid grid-cols-5 gap-2">
-                {MAUS_EXPRESSIONS.map((expression) => (
+                {PICKABLE_STATES.map((expression) => (
                   <button
                     key={expression}
                     onClick={() => patch({ mascotExpression: expression })}
                     className={cn(
                       "flex h-[58px] items-center justify-center rounded-xl bg-inset transition-colors hover:bg-raised",
-                      activeExpression === expression && "ring-2 ring-accent-border",
+                      activeState === expression && "ring-2 ring-accent-border",
                     )}
                     title={expression}
                     aria-label={`Use ${expression} expression`}
                   >
-                    <MausAvatar color={bot.color} expression={expression} size={42} />
+                    <MausAvatar color={bot.color} state={expression} size={42} animated={false} />
                   </button>
                 ))}
               </div>
@@ -122,28 +124,13 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
                   />
                 ))}
               </div>
-
-              <div className="mb-2 mt-4 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-secondary">
-                Motion preview
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {MAUS_MOTIONS.map((motion) => (
-                  <button
-                    key={motion}
-                    onClick={() => dispatch({ type: "previewMascotMotion", botId: bot.id, kind: motion })}
-                    className="rounded-lg bg-inset px-2 py-2 text-[12px] capitalize text-ink-secondary transition-colors hover:bg-raised hover:text-ink"
-                    aria-label={`Preview ${motion} animation`}
-                  >
-                    {motion}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
-          <Field label="Name">
+          <Field label="Bot name">
             <input
               className={inputCls}
+              placeholder="Vladbot"
               value={bot.name}
               onChange={(e) => patch({ name: e.target.value })}
             />
@@ -163,6 +150,15 @@ export function SettingsPanel({ bot }: { bot: Bot }) {
               value={bot.description}
               onChange={(e) => patch({ description: e.target.value })}
             />
+          </Field>
+          <Field label="Project">
+            <select
+              className={inputCls}
+              value={bot.projectId ?? "default"}
+              onChange={(event) => patch({ projectId: event.target.value })}
+            >
+              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
           </Field>
 
           <div className="flex items-center justify-between gap-4 rounded-xl bg-card p-4">

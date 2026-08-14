@@ -4,7 +4,7 @@
 // a per-thread canonical NDJSON log (the debugging trick both upstream and
 // agentcal lean on), and delivered to subscribers (the SSE endpoint and
 // the server-side message folder).
-import { appendFileSync } from "node:fs";
+import { appendFileSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { EVENTS_DIR } from "../config.js";
 export class EventBus {
@@ -26,7 +26,12 @@ export class EventBus {
     }
     publish(event) {
         try {
-            appendFileSync(join(EVENTS_DIR, `${event.threadId}.ndjson`), JSON.stringify(event) + "\n");
+            const path = join(EVENTS_DIR, `${event.threadId}.ndjson`);
+            appendFileSync(path, JSON.stringify(event) + "\n", { mode: 0o600 });
+            try {
+                chmodSync(path, 0o600);
+            }
+            catch { }
         }
         catch {
             /* logging must never take down the stream */

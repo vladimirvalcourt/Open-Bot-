@@ -6,7 +6,7 @@
 //
 // Spawn-based tests are POSIX-only until Windows CLI spawning lands (the fake
 // CLI is a shebang script Windows cannot exec directly).
-import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ import type { ProviderInstance } from "../../contracts.ts";
 import { recordEvents, type EventRecorder } from "../../testing/events.ts";
 import { GrokAgentDriver } from "./grok.ts";
 import { GeminiAgentDriver } from "./gemini.ts";
+import { KimiAgentDriver } from "./kimi.ts";
 
 const FAKE_CLI = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "testing", "fake-acp-cli.ts");
 const posixOnly = describe.skipIf(process.platform === "win32");
@@ -28,9 +29,12 @@ describe("ACP decodeConfig", () => {
   it("gemini defaults to the gemini binary", () => {
     expect(GeminiAgentDriver.decodeConfig(undefined)).toEqual({ cli: "gemini", fullAuto: false, workspace: undefined });
   });
+  it("kimi defaults to the kimi binary", () => {
+    expect(KimiAgentDriver.decodeConfig(undefined)).toEqual({ cli: "kimi", fullAuto: false, workspace: undefined });
+  });
   it("fullAuto only when explicitly true", () => {
     expect(GrokAgentDriver.decodeConfig({ fullAuto: "yes" }).fullAuto).toBe(false);
-    expect(GrokAgentDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(true);
+    expect(GrokAgentDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(false);
   });
 });
 
@@ -60,7 +64,14 @@ posixOnly("ACP turns (fake CLI)", () => {
   afterEach(async () => {
     delete process.env.FAKE_ACP_MODE;
     delete process.env.FAKE_ACP_DUMP;
+    delete process.env.FAKE_ACP_AUTH_DUMP;
     delete process.env.XAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+    delete process.env.GOOGLE_GENAI_USE_VERTEXAI;
+    delete process.env.FAKE_ACP_LOGIN_MARKER;
+    delete process.env.KIMI_API_KEY;
+    delete process.env.MOONSHOT_API_KEY;
     recorder?.stop();
     await instance?.dispose();
     rmSync(scratch, { recursive: true, force: true });
@@ -130,12 +141,53 @@ posixOnly("ACP turns (fake CLI)", () => {
     expect(err.message).toMatch(/not signed in/);
   });
 
-  it("gemini proceeds through a missing auth method (lenient login)", async () => {
-    await create(GeminiAgentDriver, "no-auth");
-    await instance.adapter.sendTurn({ threadId: "t-lenient", text: "go" });
+  it("gemini selects Google account OAuth instead of API-key auth", async () => {
+    await create(GeminiAgentDriver, "gemini-auth");
+    const dump = join(scratch, "gemini-dump.json");
+    const authDump = join(scratch, "gemini-auth.json");
+    process.env.FAKE_ACP_DUMP = dump;
+    process.env.FAKE_ACP_AUTH_DUMP = authDump;
+    process.env.GEMINI_API_KEY = "must-not-reach-subscription-driver";
+    process.env.GOOGLE_API_KEY = "must-not-reach-subscription-driver";
+    process.env.GOOGLE_GENAI_USE_VERTEXAI = "true";
+    await instance.adapter.sendTurn({ threadId: "t-google-oauth", text: "go" });
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: true });
     expect(recorder.events.some((e) => e.provider === "geminiAgent")).toBe(true);
+    const seen = JSON.parse(readFileSync(dump, "utf8"));
+    expect(seen.argv).toContain("--acp");
+    expect(seen.env.GEMINI_API_KEY).toBeUndefined();
+    expect(seen.env.GOOGLE_API_KEY).toBeUndefined();
+    expect(seen.env.GOOGLE_GENAI_USE_VERTEXAI).toBeUndefined();
+    expect(JSON.parse(readFileSync(authDump, "utf8"))).toEqual({ methodId: "oauth-personal" });
+  });
+
+  it("gemini fails closed rather than falling back to API-key auth", async () => {
+    await create(GeminiAgentDriver, "no-auth");
+    await instance.adapter.sendTurn({ threadId: "t-no-google-oauth", text: "go" });
+    const done = await recorder.until((e) => e.type === "turn.completed");
+    expect(done).toMatchObject({ ok: false, stopReason: "auth_required" });
+    expect(recorder.events.find((e) => e.type === "runtime.error")?.message).toMatch(/Sign in with Google/);
+  });
+
+  it("kimi runs the official login command, then retries ACP authentication", async () => {
+    await create(KimiAgentDriver, "kimi-auth");
+    const marker = join(scratch, "kimi-login-marker");
+    const dump = join(scratch, "kimi-acp.json");
+    process.env.FAKE_ACP_LOGIN_MARKER = marker;
+    process.env.FAKE_ACP_DUMP = dump;
+    process.env.KIMI_API_KEY = "must-not-reach-subscription-driver";
+    process.env.MOONSHOT_API_KEY = "must-not-reach-subscription-driver";
+
+    await instance.adapter.sendTurn({ threadId: "t-kimi-oauth", text: "go" });
+    const done = await recorder.until((e) => e.type === "turn.completed");
+    expect(done).toMatchObject({ ok: true });
+    expect(existsSync(marker)).toBe(true);
+    const seen = JSON.parse(readFileSync(dump, "utf8"));
+    expect(seen.argv).toContain("acp");
+    expect(seen.env.KIMI_API_KEY).toBeUndefined();
+    expect(seen.env.MOONSHOT_API_KEY).toBeUndefined();
+    expect(seen.env.KIMI_CODE_HOME).toContain(".openmausbot/providers/kimi-code");
   });
 
   it("rejects a second turn while one is in flight", async () => {

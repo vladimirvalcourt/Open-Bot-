@@ -2,22 +2,23 @@
 // ~/.openmausbot/config.json and hot-reloads the provider fleet; secrets
 // are write-only — GET /api/config returns configured flags, never values.
 import { useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "./icons";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
+import { systemText } from "@/lib/presentation";
 
-export type ConfigSection = "composio" | "composioApi" | "box";
+export type ConfigSection = "composio" | "box" | "codespaces";
 
 const SECTIONS: Record<
   ConfigSection,
   { body: (value: string) => unknown; flag: (config: ConfigStatus) => boolean }
 > = {
-  composio: { body: (v) => ({ composio: { key: v } }), flag: (c) => c.composio.configured },
-  composioApi: {
-    body: (v) => ({ composio: { apiKey: v } }),
-    flag: (c) => c.composio.apiKeyConfigured ?? false,
-  },
+  composio: { body: (v) => ({ composio: { apiKey: v, sessionId: "" } }), flag: (c) => c.composio.configured },
   box: { body: (v) => ({ box: { token: v } }), flag: (c) => c.box.configured },
+  codespaces: {
+    body: (v) => ({ codespaces: { token: v } }),
+    flag: (c) => Boolean(c.codespaces?.tokenConfigured),
+  },
 };
 
 export function ApiKeyRow({
@@ -62,7 +63,7 @@ export function ApiKeyRow({
       <div className="mb-1.5 flex items-center gap-2 text-[13px] text-ink-secondary">
         <span className={cn("size-1.5 rounded-full", configured ? "bg-success" : "bg-raised-hover")} />
         {label}
-        {configured && <span className="text-[11px] text-success">Connected</span>}
+        {configured && <span className="text-[11px] text-success">Configured</span>}
       </div>
       <div className="flex gap-2">
         <input
@@ -89,7 +90,7 @@ export function ApiKeyRow({
           {saving ? <Loader2 size={13} className="animate-spin" /> : clearing ? "Clear" : <><Check size={13} />Save</>}
         </button>
       </div>
-      {error && <div className="mt-1 text-[12px] text-danger">{error}</div>}
+      {error && <div className="mt-1 text-[12px] text-danger">{systemText(error)}</div>}
     </div>
   );
 }

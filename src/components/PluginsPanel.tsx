@@ -3,9 +3,11 @@
 // Composio API key is configured, a curated set otherwise. Icons resolve
 // logo → favicon → monogram.
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw, X } from "lucide-react";
+import { Check, Loader2, Monitor, RefreshCw, X } from "./icons";
 import { api, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
+import type { CuaStatus } from "@/types/ogb";
+import { systemText } from "@/lib/presentation";
 
 interface ToolkitCard {
   slug: string;
@@ -13,6 +15,100 @@ interface ToolkitCard {
   blurb: string;
   logo: string | null;
   domain: string | null;
+}
+
+function ComputerPluginCard() {
+  const bridge = window.ogb?.cua;
+  const [status, setStatus] = useState<CuaStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => {
+    if (!bridge) return Promise.resolve();
+    setBusy(true);
+    return bridge
+      .status()
+      .then(setStatus)
+      .finally(() => setBusy(false));
+  }, [bridge]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  if (!bridge) return null;
+
+  const ready =
+    status?.connection?.mode === "standalone" ||
+    (status?.accessibility &&
+      status.screenRecording &&
+      status.connection?.mode === "embedded");
+
+  const request = () => {
+    setBusy(true);
+    bridge
+      .requestPermissions()
+      .then(setStatus)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-hairline/40 bg-card p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-raised text-ink">
+          <Monitor size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[14px] font-medium text-ink">
+            Computer
+            {ready && <span className="size-1.5 rounded-full bg-success" />}
+          </div>
+          <div className="text-[12px] text-ink-secondary">
+            Let bots see and control this Mac with your approval.
+          </div>
+        </div>
+        <button
+          disabled={busy || !status?.available}
+          onClick={ready ? refresh : request}
+          className="w-[92px] rounded-lg bg-raised py-1.5 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={13} className="mx-auto animate-spin" /> : ready ? "Check" : "Enable"}
+        </button>
+      </div>
+
+      {status && !status.available && (
+        <div className="mt-3 text-[12px] text-warning">The computer driver is unavailable on this install.</div>
+      )}
+      {status?.available && !ready && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {([
+            ["accessibility", "Accessibility", status.accessibility],
+            ["screen", "Screen Recording", status.screenRecording],
+          ] as const).map(([pane, label, granted]) => (
+            <button
+              key={pane}
+              onClick={() => (granted ? undefined : bridge.openSettings(pane))}
+              className={cn(
+                "flex items-center justify-between rounded-lg border border-hairline/40 px-3 py-2 text-[12px]",
+                granted ? "text-success" : "text-ink-secondary hover:bg-raised hover:text-ink",
+              )}
+            >
+              {label}
+              {granted ? <Check size={13} /> : <span>Open Settings</span>}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setBusy(true);
+              bridge.restart().then(setStatus).finally(() => setBusy(false));
+            }}
+            className="col-span-2 text-left text-[12px] text-ink-secondary underline hover:text-ink"
+          >
+            Already granted? Restart the computer service
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ServiceIcon({ card }: { card: ToolkitCard }) {
@@ -131,12 +227,14 @@ export function PluginsPanel() {
           </div>
         </div>
         <div className="mt-1 text-[13px] text-ink-secondary">
-          Apps your bots can use through Composio Connect.
+          Tools and apps your bots can use.
         </div>
+
+        <ComputerPluginCard />
 
         {!configured && (
           <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-[13px] text-warning">
-            No Composio Connect key yet —{" "}
+            No Composio Platform API key yet —{" "}
             <button
               className="underline"
               onClick={() => {
@@ -147,6 +245,7 @@ export function PluginsPanel() {
               add one in App Settings
             </button>{" "}
             to connect apps.
+            <a href="https://composio.dev" target="_blank" rel="noreferrer" className="ml-1 underline">Get credentials</a>
           </div>
         )}
         {configured && source === "curated" && (
@@ -164,7 +263,7 @@ export function PluginsPanel() {
             to browse the full catalog.
           </div>
         )}
-        {error && <div className="mt-2 text-[12px] text-danger">{error}</div>}
+        {error && <div className="mt-2 text-[12px] text-danger">{systemText(error)}</div>}
 
         <input
           value={search}

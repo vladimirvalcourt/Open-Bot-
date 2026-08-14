@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { StoreProvider, useStore } from "@/state/store";
 import { Onboarding } from "@/components/Onboarding";
 import { emailGateDone, initAnalytics } from "@/lib/analytics";
@@ -9,12 +9,22 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { PluginsPanel } from "@/components/PluginsPanel";
 import { ComputerPanel } from "@/components/ComputerPanel";
 import { AppSettingsPanel } from "@/components/AppSettingsPanel";
+import { UpdateBanner } from "@/components/UpdateBanner";
+import { RoutinesPanel } from "@/components/RoutinesPanel";
+import { BrowserPanel } from "@/components/BrowserPanel";
+import { WorkPanel } from "@/components/WorkPanel";
+import { MemoryPanel } from "@/components/MemoryPanel";
+import { TeamPanel } from "@/components/TeamPanel";
+import { MissionControlPanel } from "@/components/MissionControlPanel";
 
 function Shell() {
   const { state } = useStore();
   const bot = state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0];
   return (
-    <div className="relative flex h-full">
+    <div className="flex h-full flex-col">
+      {/* fixed-position popup, bottom-left — outside the layout flow */}
+      <UpdateBanner />
+      <div className="relative flex min-h-0 flex-1">
       <Sidebar />
       {bot ? (
         <ChatView bot={bot} />
@@ -33,8 +43,15 @@ function Shell() {
       )}
       {state.settingsOpen && bot && <SettingsPanel bot={bot} />}
       {state.computerOpen && bot && <ComputerPanel bot={bot} />}
+      {state.browserOpen && bot && <BrowserPanel bot={bot} />}
       {state.appSettingsOpen && <AppSettingsPanel />}
       {state.pluginsOpen && <PluginsPanel />}
+      {state.routinesOpen && <RoutinesPanel />}
+      {state.workOpen && <WorkPanel />}
+      {state.memoryOpen && <MemoryPanel />}
+      {state.teamOpen && <TeamPanel />}
+      {state.missionControlOpen && <MissionControlPanel />}
+      </div>
     </div>
   );
 }
@@ -42,7 +59,10 @@ function Shell() {
 export default function App() {
   const [gated, setGated] = useState(() => !emailGateDone());
   useEffect(() => {
-    initAnalytics();
+    void fetch("/api/governance")
+      .then((response) => response.json())
+      .then((body) => initAnalytics(body.governance?.privacy?.analytics === true))
+      .catch(() => {});
   }, []);
   return (
     <StoreProvider>

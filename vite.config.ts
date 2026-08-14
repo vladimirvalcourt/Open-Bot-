@@ -1,4 +1,7 @@
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -7,7 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts"],
+    include: ["server/**/*.test.ts", "electron/**/*.test.ts"],
     setupFiles: ["server/testing/setup.ts"],
     // the suite spawns fake provider CLIs and a real harness server;
     // parallel files introduce load-sensitive flakes for no win
@@ -35,6 +38,12 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: `http://127.0.0.1:${process.env.OGB_PORT || 8799}`,
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq) => {
+            const tokenPath = join(process.env.OMB_DATA_DIR || join(homedir(), ".openmausbot"), "dev-api-token");
+            try { proxyReq.setHeader("authorization", `Bearer ${readFileSync(tokenPath, "utf8").trim()}`); } catch {}
+          });
+        },
       },
     },
   },

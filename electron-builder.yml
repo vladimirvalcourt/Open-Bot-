@@ -2,6 +2,15 @@ appId: com.openmausbot.app
 productName: OpenMausBot
 artifactName: OpenMausBot-${version}-${arch}.${ext}
 
+# In-app auto-update reads latest-mac.yml + the .zip from this PUBLIC releases
+# repo (separate from the source repo). Public → no token on users' machines.
+# Baked into app-update.yml; `latest-mac.yml` is emitted here even with
+# --publish never, and uploaded to the GitHub release alongside the artifacts.
+publish:
+  - provider: github
+    owner: milind-soni
+    repo: openmausbot-releases
+
 directories:
   buildResources: build
   output: release
@@ -14,6 +23,7 @@ directories:
 files:
   - electron/**
   - "!electron/resources/speech-helper"
+  - "!electron/resources/keychain-helper"
   - "!**/node_modules/**"
   - package.json
 
@@ -26,6 +36,20 @@ extraResources:
     to: server
   - from: electron/resources/speech-helper
     to: speech-helper
+  - from: electron/resources/keychain-helper
+    to: keychain-helper
+  # Prepared from CUA's pinned, checksummed release by `pnpm build:cua`.
+  # It must stay outside ASAR so Electron can spawn it as the TCC-responsible
+  # process's child.
+  - from: build/cua-driver
+    to: cua-driver
+  # Official GitHub CLI, pinned and checksummed by `pnpm build:gh`.
+  - from: build/github-cli/gh
+    to: github-cli/gh
+
+# electron-builder globally filters nested node_modules directories from file
+# sets. This hook stages the embedded SDK after packing and before signing.
+afterPack: scripts/after-pack.mjs
 
 mac:
   target:
@@ -39,9 +63,17 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # electron-builder re-signs this nested executable with the exact identity
+  # used for OpenMausBot before it signs the enclosing app bundle.
+  binaries:
+    - Contents/Resources/cua-driver
+    - Contents/Resources/github-cli/gh
+    - Contents/Resources/keychain-helper
   extendInfo:
     NSMicrophoneUsageDescription: OpenMausBot uses the microphone for voice dictation into the composer.
     NSSpeechRecognitionUsageDescription: OpenMausBot transcribes your voice on-device to type messages for you.
+    NSAccessibilityUsageDescription: OpenMausBot uses Accessibility when you allow a bot to control this Mac.
+    NSScreenCaptureUsageDescription: OpenMausBot uses Screen Recording so you can see and approve what a bot does on this Mac.
   # Notarization runs manually after the build (notarytool + staple),
   # mirroring the BlueyLite ship_release.sh flow.
   notarize: false

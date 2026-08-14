@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, AlertTriangle, Loader2, Mic } from "lucide-react";
+import { Check, CheckCircle, Loader2, Mic, WarningCircle } from "./icons";
 import { MausAvatar } from "./Avatar";
 import { identifyEmail, setEmailGateDone, track } from "@/lib/analytics";
 
@@ -18,24 +18,20 @@ const isElectron = navigator.userAgent.includes("Electron");
 
 function StatusRow({
   ok,
-  warn,
   title,
   detail,
 }: {
   ok: boolean;
-  warn?: boolean;
   title: string;
   detail: string;
 }) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-card p-3.5">
-      <span
-        className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${
-          ok ? "bg-[#00c97222] text-[#38d591]" : warn ? "bg-[#ff980022] text-[#ff9800]" : "bg-raised text-ink-secondary"
-        }`}
-      >
-        {ok ? <Check size={14} /> : <AlertTriangle size={13} />}
-      </span>
+      {ok ? (
+        <CheckCircle size={20} weight="regular" className="mt-0.5 shrink-0 text-success" />
+      ) : (
+        <WarningCircle size={20} weight="regular" className="mt-0.5 shrink-0 text-warning" />
+      )}
       <div className="min-w-0">
         <div className="text-[14px] font-medium text-ink">{title}</div>
         <div className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">{detail}</div>
@@ -94,13 +90,15 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const claude = byKind("claudeAgent");
   const codex = byKind("codex");
   const grok = byKind("grokAgent");
+  const gemini = byKind("geminiAgent");
+  const kimi = byKind("kimiAgent");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-app">
       <div className="flex w-[460px] flex-col rounded-2xl border border-hairline/40 bg-panel p-8">
         {step === 0 && (
           <div className="flex flex-col items-center">
-            <MausAvatar color="green" expression="friendly" size={72} />
+            <MausAvatar color="green" state="happy" size={72} />
             <h1 className="mt-4 text-[20px] font-semibold text-ink">Welcome to OpenMausBot</h1>
             <p className="mt-1.5 text-center text-[14px] leading-relaxed text-ink-secondary">
               Bots that do real work on their own computer. Tell us who you are
@@ -156,7 +154,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 <>
                   <StatusRow
                     ok={claude?.snapshot.state === "available"}
-                    warn
                     title={`Claude Code ${claude?.snapshot.version ? `· ${claude.snapshot.version.split(" ")[0]}` : ""}`}
                     detail={
                       claude?.snapshot.state === "available"
@@ -168,7 +165,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   />
                   <StatusRow
                     ok={codex?.snapshot.state === "available"}
-                    warn
                     title={`Codex ${codex?.snapshot.version ? `· ${codex.snapshot.version.replace("codex-cli ", "")}` : ""}`}
                     detail={
                       codex?.snapshot.state === "available"
@@ -178,7 +174,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   />
                   <StatusRow
                     ok={grok?.snapshot.state === "available"}
-                    warn
                     title={`Grok Build ${grok?.snapshot.version ? `· ${grok.snapshot.version.split(" ")[1]}` : ""}`}
                     detail={
                       grok?.snapshot.state === "available"
@@ -186,6 +181,28 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                           ? "Installed and signed in — bots can run on Grok too."
                           : "Installed. Run `grok login` in a terminal to sign in."
                         : "Optional. Install: curl -fsSL https://x.ai/cli/install.sh | bash"
+                    }
+                  />
+                  <StatusRow
+                    ok={gemini?.snapshot.state === "available"}
+                    title={`Gemini CLI ${gemini?.snapshot.version ? `· ${gemini.snapshot.version.split(" ").at(-1)}` : ""}`}
+                    detail={
+                      gemini?.snapshot.state === "available"
+                        ? gemini.snapshot.authenticated
+                          ? "Installed and signed in with Google — subscription quota is ready."
+                          : "Installed. Choose Gemini and send a message to open Sign in with Google."
+                        : "Optional. Install: npm i -g @google/gemini-cli"
+                    }
+                  />
+                  <StatusRow
+                    ok={kimi?.snapshot.state === "available"}
+                    title={`Kimi Code ${kimi?.snapshot.version ? `· ${kimi.snapshot.version.split(" ").at(-1)}` : ""}`}
+                    detail={
+                      kimi?.snapshot.state === "available"
+                        ? kimi.snapshot.authenticated
+                          ? "Installed and signed in — Kimi subscription access is ready."
+                          : "Installed. Choose Kimi and send a message to open Kimi account login."
+                        : "Optional. Install: npm i -g @moonshot-ai/kimi-code"
                     }
                   />
                 </>

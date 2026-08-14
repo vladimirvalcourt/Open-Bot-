@@ -28,6 +28,7 @@ import type {
 import { newEventId, newId } from "../../contracts.ts";
 import { augmentedPath } from "../../env-path.ts";
 import { appendNative } from "../native.ts";
+import { sealIntegration } from "../../secure-integration.ts";
 
 export interface AcpConfig {
   cli: string;
@@ -54,6 +55,10 @@ export interface AcpSupport {
   /** Pick the ACP authenticate methodId from initialize's advertised
    * authMethods; return null to skip the authenticate step. */
   pickAuthMethod(authMethods: Array<{ id?: string }>): string | null;
+  /** Optional vendor-owned interactive login command. It runs only after the
+   * ACP authenticate request reports missing/invalid auth, then authenticate
+   * is retried. The app never receives the resulting credential. */
+  authRecoveryArgs?(config: AcpConfig): string[];
   /** "fail": abort the turn if auth is missing/errors (subscription CLIs).
    *  "continue": proceed anyway (CLIs that work off an ambient login). */
   authFailure: "fail" | "continue";
@@ -72,7 +77,8 @@ function decodeAcpConfig(defaultCli: string) {
     const o = (raw ?? {}) as Record<string, unknown>;
     return {
       cli: typeof o.cli === "string" ? o.cli : defaultCli,
-      fullAuto: o.fullAuto === true,
+      // Central governance is authoritative; provider-local bypass is disabled.
+      fullAuto: false,
       workspace: typeof o.workspace === "string" ? o.workspace : undefined,
     };
   };
@@ -130,14 +136,22 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
       // fine here. env is the ACP {name,value}[] shape.
       const acpMcpServers = (turn: SendTurnInput) => {
         const servers: Array<{ name: string; command: string; args: string[]; env: Array<{ name: string; value: string }> }> = [];
+        const composio = turn.integrations?.composio;
+        if (composio) { const sealed = sealIntegration(composio); servers.push({ name: "composio", command: sealed.command, args: sealed.args, env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })) }); }
         const agents = turn.integrations?.agents;
         if (agents) {
+          const sealed = sealIntegration(agents);
           servers.push({
             name: "agents",
-            command: agents.command,
-            args: agents.args,
-            env: Object.entries(agents.env).map(([name, value]) => ({ name, value: String(value) })),
+            command: sealed.command,
+            args: sealed.args,
+            env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })),
           });
+        }
+        const browser = turn.integrations?.browser;
+        if (browser) {
+          const sealed = sealIntegration(browser);
+          servers.push({ name: "browser", command: sealed.command, args: sealed.args, env: Object.entries(sealed.env).map(([name, value]) => ({ name, value: String(value) })) });
         }
         return servers;
       };
@@ -235,15 +249,6 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             });
 
           const toolCall = params.toolCall ?? {};
-          if (config.fullAuto) {
-            const allow = optionFor("allow");
-            if (!allow) missing("allow");
-            return send({
-              jsonrpc: "2.0",
-              id: msg.id,
-              result: allow ? { outcome: { outcome: "selected", optionId: allow } } : cancelled,
-            });
-          }
           const kind = String(toolCall.kind ?? "");
           const tool = kind === "execute" ? "shell" : kind === "edit" ? "edit" : kind || "tool";
           const summary = String(toolCall.rawInput?.command ?? toolCall.title ?? tool).slice(0, 200);
@@ -404,7 +409,20 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               try {
                 await request("authenticate", { methodId }, INIT_TIMEOUT);
               } catch {
-                if (support.authFailure === "fail") throw new Error(support.loginNote);
+                const recoveryArgs = support.authRecoveryArgs?.(config);
+                if (recoveryArgs) {
+                  await new Promise<void>((resolve, reject) => {
+                    execFile(
+                      config.cli,
+                      recoveryArgs,
+                      { cwd, env, timeout: 15 * 60_000, maxBuffer: 64 * 1024 },
+                      (error) => (error ? reject(new Error(support.loginNote)) : resolve()),
+                    );
+                  });
+                  await request("authenticate", { methodId }, INIT_TIMEOUT);
+                } else if (support.authFailure === "fail") {
+                  throw new Error(support.loginNote);
+                }
                 // else: proceed on an ambient login
               }
             } else if (support.authFailure === "fail") {
@@ -486,7 +504,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
         snapshot,
         adapter: {
           provider: DRIVER_KIND,
-          capabilities: { sessionModelSwitch: "unsupported", agentsMcp: true },
+          capabilities: { sessionModelSwitch: "unsupported", composioMcp: true, agentsMcp: true },
           sendTurn,
           interruptTurn: async (threadId) => active.get(threadId)?.interrupt(),
           respondToRequest: async (threadId, requestId, decision) => {

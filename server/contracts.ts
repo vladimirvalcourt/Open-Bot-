@@ -97,9 +97,12 @@ export interface SendTurnInput {
   system?: string;
   /** Per-bot integrations the driver may hand to the agent as tools. */
   integrations?: {
-    composio?: { url?: string; key: string };
+    composio?: { command: string; args: string[]; env: Record<string, string> };
     /** The bot's cloud computer (box.ascii.dev) for desktop/browser use. */
     computer?: { boxId: string; token: string };
+    /** Generic remote Linux computer (currently GitHub Codespaces). The
+     * harness owns lifecycle; drivers only mount this MCP spawn contract. */
+    remoteComputer?: { command: string; args: string[]; env: Record<string, string> };
     /** Local computer use via the Electron-hosted cua-driver daemon —
      * spawn config comes verbatim from cua-connection.json (the daemon
      * MUST be spawned by Electron main; the harness only points the agent
@@ -109,6 +112,8 @@ export interface SendTurnInput {
      * through the harness so this bot can message other bots. The harness
      * owns turns, permissions, and recursion limits; the proxy only forwards. */
     agents?: { command: string; args: string[]; env: Record<string, string> };
+    /** Embedded Electron browser tools for this bot's isolated session. */
+    browser?: { command: string; args: string[]; env: Record<string, string> };
   };
   cwd?: string;
 }
@@ -121,6 +126,8 @@ export interface ProviderAdapter {
   readonly provider: DriverKind;
   readonly capabilities: {
     sessionModelSwitch: "in-session" | "unsupported";
+    /** True when the driver mounts turn.integrations.composio as MCP tools. */
+    composioMcp?: boolean;
     /** True when the driver mounts turn.integrations.agents as MCP tools —
      * the harness only offers agents tooling (and prompts about it) to
      * drivers that can actually hand it to the agent. */

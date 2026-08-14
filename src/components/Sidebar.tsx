@@ -13,12 +13,18 @@ import {
   Search,
   Settings,
   Puzzle,
+  Clock3,
+  BriefcaseBusiness,
+  Brain,
+  Users,
+  Gauge,
   Trash2,
-} from "lucide-react";
+} from "./icons";
 import { useStore, formatTime, type Bot } from "@/state/store";
 import { MausAvatar, InitialsAvatar } from "./Avatar";
-import { expressionForBot } from "@/lib/mascot";
+import { stateForBot } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
+import { isCustomerVisibleActivity } from "@/lib/activity";
 
 const isElectron = navigator.userAgent.includes("Electron");
 
@@ -38,7 +44,9 @@ function profileInitials(profile?: { name?: string; email?: string }): string {
 
 function preview(bot: Bot): string {
   if (bot.busy) return "Working…";
-  const last = bot.messages[bot.messages.length - 1];
+  const last = [...bot.messages].reverse().find(
+    (message) => message.kind !== "activity" || isCustomerVisibleActivity(message.tool?.name),
+  );
   if (!last) return "";
   if (last.kind === "options" && last.card) return last.card.title;
   if (last.kind === "activity" && last.tool) return last.tool.name;
@@ -114,15 +122,23 @@ function BotContextMenu({ menu, onClose }: { menu: MenuState; onClose: () => voi
           bot.pinned ? "Unpin" : "Pin",
           () => dispatch({ type: "updateBot", botId: bot.id, patch: { pinned: !bot.pinned } }),
         ),
-        item(<FolderPlus size={16} className="text-ink-secondary" />, "Move to new section", undefined, {
-          disabled: true,
-          hint: "Coming soon",
+        item(<FolderPlus size={16} className="text-ink-secondary" />, bot.section ? "Move to section…" : "Move to new section", () => {
+          const section = window.prompt("Section name (leave blank for no section)", bot.section ?? "");
+          if (section !== null) {
+            dispatch({ type: "updateBot", botId: bot.id, patch: { section: section.trim() || undefined } });
+          }
         }),
         item(<BellDot size={16} className="text-ink-secondary" />, "Mark as Unread", () =>
           dispatch({ type: "markUnread", botId: bot.id }),
         ),
         divider("d1"),
-        item(<Pencil size={16} className="text-ink-secondary" />, "Edit Profile", () => {
+        item(<Pencil size={16} className="text-ink-secondary" />, "Rename bot…", () => {
+          const name = window.prompt("Bot name", bot.name)?.trim();
+          if (name && name !== bot.name) {
+            dispatch({ type: "updateBot", botId: bot.id, patch: { name } });
+          }
+        }),
+        item(<Settings size={16} className="text-ink-secondary" />, "Bot settings", () => {
           dispatch({ type: "select", id: bot.id });
           dispatch({ type: "toggleSettings", open: true });
         }),
@@ -137,9 +153,16 @@ function BotContextMenu({ menu, onClose }: { menu: MenuState; onClose: () => voi
         item(<EyeOff size={16} className="text-ink-secondary" />, "Hide from sidebar", () =>
           dispatch({ type: "updateBot", botId: bot.id, patch: { hidden: true } }),
         ),
-        item(<Trash2 size={16} />, "Delete", () => dispatch({ type: "deleteBot", botId: bot.id }), {
-          danger: true,
-        }),
+        item(
+          <Trash2 size={16} />,
+          "Delete",
+          () => {
+            if (window.confirm(`Delete ${bot.name}? Its local conversation will be kept in a recovery archive.`)) {
+              dispatch({ type: "deleteBot", botId: bot.id });
+            }
+          },
+          { danger: true },
+        ),
       ]}
     </div>
   );
@@ -164,8 +187,8 @@ function BotListItem({ bot, onMenu }: { bot: Bot; onMenu: (menu: MenuState) => v
     >
       <MausAvatar
         color={bot.color}
-        expression={expressionForBot(bot)}
-        size={44}
+        state={stateForBot(bot)}
+        size={56}
         motion={mascotMotion?.kind ?? "none"}
         motionKey={mascotMotion?.nonce ?? 0}
       />
@@ -197,10 +220,16 @@ function BotListItem({ bot, onMenu }: { bot: Bot; onMenu: (menu: MenuState) => v
 export function Sidebar() {
   const { state, dispatch } = useStore();
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [search, setSearch] = useState("");
 
   const visibleBots = state.bots
-    .filter((b) => !b.hidden)
+    .filter((b) => !b.hidden && (!search || `${b.name} ${b.title} ${b.description} ${b.section ?? ""}`.toLowerCase().includes(search.toLowerCase())))
     .sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false));
+  const grouped = new Map<string, Bot[]>();
+  for (const bot of visibleBots) {
+    const section = bot.section?.trim() || "Bots";
+    grouped.set(section, [...(grouped.get(section) ?? []), bot]);
+  }
 
   return (
     <aside className="flex h-full w-[320px] shrink-0 flex-col border-r border-hairline/40 bg-panel">
@@ -233,6 +262,8 @@ export function Sidebar() {
         <div className="flex items-center gap-2 rounded-lg bg-raised/70 px-3 py-2">
           <Search size={16} className="text-ink-secondary" />
           <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search"
             className="w-full bg-transparent text-[14px] text-ink placeholder:text-ink-secondary focus:outline-none"
           />
@@ -241,15 +272,40 @@ export function Sidebar() {
 
       {/* Bot list */}
       <div className="flex-1 overflow-y-auto px-2">
-        <div className="flex flex-col gap-0.5">
-          {visibleBots.map((b) => (
-            <BotListItem key={b.id} bot={b} onMenu={setMenu} />
-          ))}
-        </div>
+        {[...grouped.entries()].map(([section, bots]) => (
+          <div key={section} className="mb-3">
+            <div className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+              {section}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {bots.map((b) => <BotListItem key={b.id} bot={b} onMenu={setMenu} />)}
+            </div>
+          </div>
+        ))}
+        {visibleBots.length === 0 && (
+          <div className="px-3 py-8 text-center text-[13px] text-ink-secondary">No bots match.</div>
+        )}
       </div>
 
       {/* Footer */}
       <div className="px-3 pb-3 pt-2">
+        <button onClick={() => dispatch({ type: "toggleMissionControl", open: true })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"><Gauge size={20} className="text-ink-secondary" /><span className="text-[14px] text-ink">Mission Control</span></button>
+        <button
+          onClick={() => dispatch({ type: "toggleWork", open: true })}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"
+        >
+          <BriefcaseBusiness size={20} className="text-ink-secondary" />
+          <span className="text-[14px] text-ink">Work</span>
+        </button>
+        <button
+          onClick={() => dispatch({ type: "toggleRoutines", open: true })}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"
+        >
+          <Clock3 size={20} className="text-ink-secondary" />
+          <span className="text-[14px] text-ink">Routines</span>
+        </button>
+        <button onClick={() => dispatch({ type: "toggleMemory", open: true })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"><Brain size={20} className="text-ink-secondary" /><span className="text-[14px] text-ink">Memory</span></button>
+        <button onClick={() => dispatch({ type: "toggleTeam", open: true })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"><Users size={20} className="text-ink-secondary" /><span className="text-[14px] text-ink">Team task</span></button>
         <button
           onClick={() => dispatch({ type: "togglePlugins", open: true })}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-raised/50"

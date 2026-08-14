@@ -1,3 +1,5 @@
+> ⚠️ **No affiliation with any cryptocurrency.** OpenMausBot has no token. Any coin using the OpenMausBot, Maus, or SupaMaus name is not created, endorsed, or affiliated with this project or its maintainer. I have received no tokens, payment, or allocation from anyone, and I will not be endorsing any token.
+
 <div align="center">
 
 # OpenMausBot
@@ -40,10 +42,10 @@ it keeps the idea (AI as a *messaging app*: a roster of bots you chat with, each
 memory of its thread, model, computer, and apps) and rebuilds it open, local-first, and on the agents you
 already have:
 
-- **Bring your own agents.** Bots run on the `claude`, `codex`, and `grok` CLIs installed on your Mac — your
+- **Bring your own agents.** Bots run on the `claude`, `codex`, `grok`, `gemini`, and `kimi` CLIs installed on your Mac — your
   existing logins and subscriptions, no new accounts, no proxy in the middle.
-- **Local first.** One small harness server on `127.0.0.1` owns every agent process. Transcripts, keys, and
-  events live in `~/.openmausbot`, not a cloud.
+- **Local first.** One small harness server on `127.0.0.1` owns every agent process. Transcripts, settings,
+  and events live in `~/.openmausbot`; packaged macOS builds keep provider secrets in Apple Keychain.
 - **Agents with hands.** Each bot can get a real computer — a cloud Linux desktop it drives while you watch
   live, or your own Mac — plus 500+ apps through Composio Connect.
 
@@ -118,9 +120,33 @@ Secrets are write-only: the UI only ever sees "configured" flags.
 </tr>
 </table>
 
-**Also in the box:** streaming replies with tool-run activity chips · native macOS dictation from the
+**Also in the box:** per-bot embedded browser sessions with agent navigation, accessibility snapshots,
+ref-based clicking, typing, and screenshots · streaming replies with tool-run activity chips · native macOS dictation from the
 composer mic (on-device Apple speech recognition — desktop app) · SupaMaus cursor mascots with role-aware
 expressions · screenshots of the bot's work folded into the transcript.
+
+### Autonomous work
+
+- **Durable Work inbox.** Every chat, routine, and team assignment has a persisted task/run record with real
+  completion state, output, tool activity, token usage, retries, and a central approval queue.
+- **Teams.** Select up to eight bots for one assignment. They work in parallel with separate visible threads,
+  durable runs, and audit trails so each contribution can be reviewed independently.
+- **Memory.** Save bot-scoped or shared facts, preferences, projects, and procedures. Memory is explicitly user-managed;
+  bots do not silently write it.
+- **Teach a task.** Record an embedded-browser workflow, redact entered values, review the generated procedure, and save
+  it as a paused routine.
+- **Routines and triggers.** Once, hourly, daily, weekdays, weekly, monthly, or yearly schedules use explicit timezones;
+  webhook/email-style triggers, run history, completion notifications, and bounded retries are included.
+- **Attachments.** Add approved document, image, audio, data, and source formats through a private local vault with opaque IDs
+  and a 20 MB per-file limit.
+- **Remote foundations.** Optional bearer-token remote API access, a compact mobile bootstrap endpoint, and Docker/systemd
+  worker definitions are included. The harness remains loopback-only and accepts remote requests exclusively through an explicitly trusted HTTPS reverse proxy.
+- **Mission Control and Trust Center.** Server-enforced Observe, Draft, Approve, and Auto modes; scoped temporary permission rules;
+  emergency stop; provider health and failover; usage, failure, checkpoint, and approval reporting; setup certification; and workflow replay data.
+- **Commercial data foundations.** Provider secrets migrate to macOS Keychain, encrypted workspace backup/import excludes credentials,
+  privacy telemetry is off by default, redacted diagnostics are user-controlled, and local crash metadata is opt-in.
+- **Professional starting points.** Executive Office, Research Lab, Marketing Studio, and Development Team templates install as projects
+  with specialized bots and paused routines. Project knowledge sources carry provenance and freshness timestamps into every turn.
 
 ## How it works
 
@@ -157,6 +183,16 @@ flowchart LR
 | App | `src/` | The chat shell. Server-backed store, one reducer, zero client-side transports. |
 | Desktop | `electron/` | macOS shell: dictation helper (SFSpeechRecognizer), local screen capture, CUA bridge. |
 
+## Documentation
+
+| Guide | Contents |
+|---|---|
+| [Complete feature guide](docs/FEATURES.md) | Product surfaces, providers, automation, computer/browser control, security, storage, limits, and current boundaries. |
+| [Remote access](docs/remote-access.md) | Required HTTPS reverse-proxy topology, bearer-token setup, and deployment examples. |
+| [Computer-use integration](docs/computer-use-integration.md) | macOS CUA architecture, signing/TCC ownership, embedded browser tiers, and packaging notes. |
+| [Security policy](SECURITY.md) | Supported security boundaries and private vulnerability-reporting instructions. |
+| [Contributing](CONTRIBUTING.md) | Development setup, architecture map, testing rules, provider SPI, and release verification. |
+
 ## Quick start
 
 **Easiest:** [download the latest .dmg](https://github.com/milind-soni/openmausbot-releases/releases/latest),
@@ -174,27 +210,49 @@ pnpm dev:desktop   # or the Electron shell
 ```
 
 Requirements: **macOS**, **Node 24+**, **pnpm**, and at least one agent CLI — [`claude`](https://claude.com/claude-code),
-[`codex`](https://github.com/openai/codex), or [`grok`](https://x.ai/cli) — installed and logged in. They appear
+[`codex`](https://github.com/openai/codex), [`grok`](https://x.ai/cli), [`gemini`](https://github.com/google-gemini/gemini-cli), or [`kimi`](https://github.com/MoonshotAI/kimi-code) — installed and logged in. They appear
 in the model picker automatically.
+
+For remote/mobile API deployment, follow [the TLS proxy guide](docs/remote-access.md). Port 8799 must never be exposed directly.
+
+Gemini uses the official **Sign in with Google** OAuth flow through Gemini CLI. Google AI Pro and Ultra
+accounts receive their subscription quota; OpenMausBot neither asks for nor stores a Gemini API key.
+
+Kimi Code uses Moonshot AI's official device-code OAuth flow and an isolated provider home under
+`~/.openmausbot/providers/kimi-code`. OpenMausBot starts the login flow but never reads the OAuth credential.
 
 Optional, pasted once in **App Settings** (gear in the sidebar footer):
 
 | Key | Unlocks |
 |---|---|
-| Composio Connect key (`ck_…`) | The connected-apps marketplace |
-| Composio API key (`ak_…`) | The full 500+ app catalog with official logos |
+| Composio Platform API key (`ak_…`) | Connected-app authorization and the full app catalog |
+| GitHub token with Codespaces access | An isolated Linux shell computer using the GitHub account's included quota |
 | Box token ([box.ascii.dev](https://box.ascii.dev)) | Cloud computers for your bots |
+
+On macOS, provider credentials are stored in Keychain by the packaged app. The JSON configuration retains only non-secret settings;
+legacy plaintext credentials are migrated on first launch and removed only after the Keychain write succeeds.
 
 ```sh
 pnpm typecheck     # app + server
 pnpm build         # typecheck + production build
 ```
 
+## Security model
+
+- The desktop harness binds to loopback and uses a random per-boot session for local API calls.
+- Remote access never opens the harness directly; it requires an explicitly trusted loopback HTTPS reverse proxy and a separate bearer token.
+- Provider secrets are write-only through the UI/API and consolidated into one cached Apple Keychain vault item in packaged macOS builds.
+- Observe, Draft, Approve, and Auto are enforced by the server. Auto only pre-authorizes an exact built-in allowlist of read-only tools; shell commands, edits, browser actions, and connected-app mutations still require policy approval.
+- Emergency stop denies new actions and interrupts active work. Central approvals and durable run history remain visible in Work and Mission Control.
+- Attachments are allowlisted, size-limited, stored with opaque IDs, and never expose their server paths. Encrypted backups exclude credentials.
+
+See [SECURITY.md](SECURITY.md) for the vulnerability-reporting policy and [the complete feature guide](docs/FEATURES.md#security-and-trust) for the full control map.
+
 ## Status
 
 Early but real — the loop works end to end: message → agent → streamed reply → tools → approvals →
-computer use. Rough edges to expect: routines (scheduled tasks) are a placeholder, sidebar sections aren't
-built yet, and Windows/Linux shells haven't been attempted (the harness itself is portable Node).
+computer and browser use. Persisted scheduled routines and named sidebar sections are available. Windows/Linux
+shells haven't been attempted (the harness itself is portable Node).
 
 Contributions welcome — the driver SPI in [`server/contracts.ts`](server/contracts.ts) is deliberately
 small; adding a provider is one file in [`server/drivers/`](server/drivers/) plus a one-line registration.

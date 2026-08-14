@@ -9,15 +9,21 @@
 //                   | ask-peer (spawn the injected "agents" MCP server from
 //                     session/new's mcpServers, call list_bots + ask_bot on a
 //                     peer, and reply with what the peer said — the comms e2e)
+//                   | workspace-tools (exercise capability, memory, routine tools)
 //   FAKE_ACP_DUMP   path to write {argv, env} as JSON, so a test can assert
 //                   argv shape (agent/stdio flags) and env hygiene
+//   FAKE_ACP_AUTH_DUMP path to write the requested authenticate method id
 //
 // Keep this file dependency-free — it runs as a bare `node` subprocess.
 import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 
 const mode = process.env.FAKE_ACP_MODE ?? "happy";
 const argv = process.argv.slice(2);
+if (argv.includes("login")) {
+  if (process.env.FAKE_ACP_LOGIN_MARKER) writeFileSync(process.env.FAKE_ACP_LOGIN_MARKER, "logged-in");
+  process.exit(0);
+}
 if (argv.includes("--version")) {
   console.log("fake-acp 1.0.0");
   process.exit(0);
@@ -126,12 +132,26 @@ function handle(msg: any) {
         process.stderr.write("fake-acp: simulated crash before result\n");
         process.exit(3);
       }
-      const authMethods = mode === "no-auth" ? [] : [{ id: "cached_token" }];
+      const authMethods =
+        mode === "no-auth"
+          ? []
+          : mode === "gemini-auth"
+            ? [{ id: "gemini-api-key" }, { id: "oauth-personal" }, { id: "vertex-ai" }]
+            : mode === "kimi-auth"
+              ? [{ id: "login", type: "terminal", args: ["--login"] }]
+            : [{ id: "cached_token" }];
       result(msg.id, { protocolVersion: 1, authMethods, _meta: { modelState: { currentModelId: "fake-acp-model" } } });
       break;
     }
     case "authenticate":
-      result(msg.id, {});
+      if (process.env.FAKE_ACP_AUTH_DUMP) {
+        writeFileSync(process.env.FAKE_ACP_AUTH_DUMP, JSON.stringify({ methodId: msg.params?.methodId }));
+      }
+      if (mode === "kimi-auth" && !existsSync(process.env.FAKE_ACP_LOGIN_MARKER ?? "")) {
+        out({ jsonrpc: "2.0", id: msg.id, error: { code: -32000, message: "auth required" } });
+      } else {
+        result(msg.id, {});
+      }
       break;
     case "session/new": {
       const servers: McpEntry[] = Array.isArray(msg.params?.mcpServers) ? msg.params.mcpServers : [];
@@ -167,6 +187,24 @@ function handle(msg: any) {
           })
           .catch((e) => {
             out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `peer error: ${(e as Error).message}` } } } });
+            complete();
+          });
+        return;
+      }
+      if (mode === "workspace-tools" && agentsMcp) {
+        void driveMcp(agentsMcp, [
+          { name: "list_capabilities", args: () => ({}) },
+          { name: "remember", args: () => ({ text: "Use concise weekly briefs", kind: "preference", scope: "bot" }) },
+          { name: "search_memory", args: () => ({ query: "concise weekly briefs" }) },
+          { name: "create_routine", args: () => ({ name: "Weekly brief", prompt: "Prepare the concise weekly brief", cadence: "weekly", timezone: "America/New_York", at: "09:00" }) },
+          { name: "list_routines", args: () => ({}) },
+        ])
+          .then((reply) => {
+            out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `workspace says: ${reply}` } } } });
+            complete();
+          })
+          .catch((e) => {
+            out({ jsonrpc: "2.0", method: "session/update", params: { update: { sessionUpdate: "agent_message_chunk", content: { text: `workspace error: ${(e as Error).message}` } } } });
             complete();
           });
         return;

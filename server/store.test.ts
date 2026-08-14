@@ -22,7 +22,8 @@ describe("Store", () => {
 
     const messages = store.messagesFor(bot.threadId);
     expect(messages).toHaveLength(2);
-    expect(messages[0]).toMatchObject({ role: "bot", kind: "text" });
+    expect(bot.name).toBe("Vladbot");
+    expect(messages[0]).toMatchObject({ role: "bot", kind: "text", text: "Hey — I'm Vladbot. Nice to meet you." });
     expect(messages[1].kind).toBe("options");
     expect(messages[1].card?.options.length).toBeGreaterThan(1);
     expect(bot.modelSelection).toEqual(selection());
@@ -33,6 +34,22 @@ describe("Store", () => {
     const first = store.createBot();
     const second = store.createBot();
     expect(first.color).not.toBe(second.color);
+    expect(second.name).toBe("Vladbot 2");
+  });
+
+  it("migrates only untouched New Bot names", () => {
+    const store = new Store(selection);
+    const first = store.createBot();
+    const second = store.createBot();
+    const raw: BotRecord[] = JSON.parse(readFileSync(join(DATA_DIR, "bots.json"), "utf8"));
+    raw.find((bot) => bot.id === first.id)!.name = "New Bot";
+    raw.find((bot) => bot.id === second.id)!.name = "Researcher";
+    writeFileSync(join(DATA_DIR, "bots.json"), JSON.stringify(raw));
+
+    const reloaded = new Store(selection);
+    expect(reloaded.bot(first.id)?.name).toBe("Vladbot");
+    expect(reloaded.bot(second.id)?.name).toBe("Researcher");
+    expect(reloaded.messagesFor(first.threadId)[0]?.text).toBe("Hey — I'm Vladbot. Nice to meet you.");
   });
 
   it("persists bots and messages across a restart, resetting busy", () => {
@@ -73,6 +90,13 @@ describe("Store", () => {
     expect(store.deleteBot(bot.id)).toBe(false);
   });
 
+  it("keeps a backup before persisting an empty bot registry", () => {
+    const store = new Store(selection);
+    const bot = store.createBot();
+    expect(store.deleteBot(bot.id)).toBe(true);
+    expect(JSON.parse(readFileSync(join(DATA_DIR, "bots.json.bak"), "utf8"))).toHaveLength(1);
+  });
+
   it("setResumeCursor persists per-instance continuations", () => {
     const store = new Store(selection);
     const bot = store.createBot();
@@ -87,6 +111,8 @@ describe("Store", () => {
     const store = new Store(selection);
     store.seedIfEmpty();
     expect(store.bots).toHaveLength(1);
+    expect(store.bots[0]?.name).toBe("Vladbot");
+    expect(store.messagesFor(store.bots[0]!.threadId)[0]?.text).toBe("Hey — I'm Vladbot. Nice to meet you.");
     store.seedIfEmpty();
     expect(store.bots).toHaveLength(1);
 

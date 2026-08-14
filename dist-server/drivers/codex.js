@@ -14,7 +14,20 @@ import { homedir } from "node:os";
 import { newEventId, newId } from "../contracts.js";
 import { augmentedPath } from "../env-path.js";
 import { appendNative } from "./native.js";
+import { sealIntegration } from "../secure-integration.js";
 const DRIVER_KIND = "codex";
+// `codex -c` parses TOML, not JSON. JSON arrays happen to be valid TOML,
+// but JSON objects are not: TOML inline tables use `key = value`. Passing
+// JSON here makes the real CLI exit before app-server initialization.
+function tomlString(value) {
+    return JSON.stringify(value);
+}
+function tomlStringArray(values) {
+    return `[${values.map(tomlString).join(", ")}]`;
+}
+function tomlStringMap(values) {
+    return `{ ${Object.entries(values).map(([key, value]) => `${tomlString(key)} = ${tomlString(value)}`).join(", ")} }`;
+}
 // catalog ported from upstream packages/contracts/src/model.ts
 const MODELS = {
     default: "gpt-5.6-sol",
@@ -28,7 +41,9 @@ function decodeConfig(raw) {
     const o = (raw ?? {});
     return {
         cli: typeof o.cli === "string" ? o.cli : "codex",
-        fullAuto: o.fullAuto === true,
+        // Provider-level full auto bypassed OpenMausBot's central Trust Center.
+        // Preserve the field for config compatibility but force it off.
+        fullAuto: false,
     };
 }
 const QUESTION_TIMEOUT_NOTE = "No answer was given — use your best judgment.";
@@ -63,13 +78,31 @@ export const CodexDriver = {
             // the CLI owns its own ChatGPT login; a leaked API key silently flips
             // billing to pay-as-you-go (agentcal)
             delete env.OPENAI_API_KEY;
-            const child = spawn(config.cli, ["app-server"], {
+            const cliArgs = ["app-server"];
+            if (turn.integrations?.composio) {
+                const connected = sealIntegration(turn.integrations.composio);
+                cliArgs.push("-c", `mcp_servers.composio.command=${tomlString(connected.command)}`, "-c", `mcp_servers.composio.args=${tomlStringArray(connected.args)}`, "-c", `mcp_servers.composio.env=${tomlStringMap(connected.env)}`);
+            }
+            if (turn.integrations?.agents) {
+                const workspace = sealIntegration(turn.integrations.agents);
+                cliArgs.push("-c", `mcp_servers.agents.command=${tomlString(workspace.command)}`, "-c", `mcp_servers.agents.args=${tomlStringArray(workspace.args)}`, "-c", `mcp_servers.agents.env=${tomlStringMap(workspace.env)}`);
+            }
+            if (turn.integrations?.browser) {
+                const browser = sealIntegration(turn.integrations.browser);
+                cliArgs.push("-c", `mcp_servers.browser.command=${tomlString(browser.command)}`, "-c", `mcp_servers.browser.args=${tomlStringArray(browser.args)}`, "-c", `mcp_servers.browser.env=${tomlStringMap(browser.env)}`);
+            }
+            const rawComputer = turn.integrations?.remoteComputer ?? turn.integrations?.localComputer;
+            const computer = rawComputer ? sealIntegration(rawComputer) : undefined;
+            if (computer) {
+                cliArgs.push("-c", `mcp_servers.computer.command=${tomlString(computer.command)}`, "-c", `mcp_servers.computer.args=${tomlStringArray(computer.args)}`, "-c", `mcp_servers.computer.env=${tomlStringMap(computer.env)}`);
+            }
+            const child = spawn(config.cli, cliArgs, {
                 cwd: turn.cwd ?? homedir(),
                 env,
                 stdio: ["pipe", "pipe", "pipe"],
                 detached: true,
             });
-            const state = { settled: false, lastText: "" };
+            const state = { settled: false, lastText: "", sawStreamDelta: false };
             const asks = new Map();
             let nextId = 1;
             const rpcPending = new Map();
@@ -120,9 +153,6 @@ export const CodexDriver = {
                     : isQuestion
                         ? "ask_user"
                         : "shell";
-                if (config.fullAuto && !isQuestion) {
-                    return send({ jsonrpc: "2.0", id: msg.id, result: { decision: legacy ? "approved" : "accept" } });
-                }
                 const requestId = newId();
                 const summary = typeof params.command === "string"
                     ? params.command.slice(0, 200)
@@ -170,6 +200,23 @@ export const CodexDriver = {
             const handleNotification = (msg) => {
                 const p = msg.params ?? {};
                 switch (msg.method) {
+                    // token-level chat text; the item/completed frame follows with the
+                    // whole message, so its delta is only a fallback when none streamed
+                    case "item/agentMessage/delta": {
+                        const delta = typeof p.delta === "string" ? p.delta : "";
+                        if (delta) {
+                            state.sawStreamDelta = true;
+                            emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta });
+                        }
+                        break;
+                    }
+                    case "item/reasoning/textDelta":
+                    case "item/reasoning/summaryTextDelta": {
+                        const delta = typeof p.delta === "string" ? p.delta : "";
+                        if (delta)
+                            emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "reasoning_text", delta });
+                        break;
+                    }
                     case "item/started": {
                         const item = p.item ?? {};
                         const title = item.type === "commandExecution"
@@ -190,7 +237,10 @@ export const CodexDriver = {
                         if (item.type === "agentMessage") {
                             if (item.text?.trim()) {
                                 state.lastText = item.text;
-                                emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta: item.text });
+                                if (!state.sawStreamDelta) {
+                                    emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta: item.text });
+                                }
+                                state.sawStreamDelta = false;
                                 emit({ ...base(threadId, turnId), type: "item.completed", itemType: "assistant_text", text: item.text });
                             }
                         }
@@ -306,8 +356,8 @@ export const CodexDriver = {
                         const started = await request("thread/start", {
                             cwd: turn.cwd ?? homedir(),
                             model: turn.model || null,
-                            sandbox: config.fullAuto ? "danger-full-access" : "workspace-write",
-                            approvalPolicy: config.fullAuto ? "never" : "on-request",
+                            sandbox: "workspace-write",
+                            approvalPolicy: "on-request",
                             ephemeral: false,
                         });
                         codexThreadId = started?.thread?.id ?? null;
@@ -345,7 +395,7 @@ export const CodexDriver = {
             snapshot,
             adapter: {
                 provider: DRIVER_KIND,
-                capabilities: { sessionModelSwitch: "unsupported" },
+                capabilities: { sessionModelSwitch: "unsupported", composioMcp: true, agentsMcp: true },
                 sendTurn,
                 interruptTurn: async (threadId) => active.get(threadId)?.stop(),
                 respondToRequest: async (threadId, requestId, decision) => {

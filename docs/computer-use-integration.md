@@ -156,8 +156,9 @@ app doesn't embed it).
    main in dev (unsigned dev builds inherit the terminal/Electron grant).
 2. Permission onboarding UI (Plugins panel → "Computer" plugin card: status,
    grant buttons, deep links).
-3. Embedded browser pane + a minimal CDP toolset (navigate / snapshot /
-   click-ref / type / screenshot) exposed as the "Browser" plugin.
+3. ✓ Embedded per-bot browser pane + minimal CDP toolset (navigate /
+   accessibility snapshot / click-ref / type / screenshot) exposed to agent
+   CLIs over a token-protected loopback bridge and stdio MCP proxy.
 4. Packaging: extraResources + re-sign + notarize; wire
    `EmbeddedCuaDriverHost` for production.
 5. Later: axstream-style macro teach/replay, extension bridge, playwright-mcp
